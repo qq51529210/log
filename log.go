@@ -102,9 +102,8 @@ func (this *log) Print(level Level, depth int, s string) {
 	n++
 	this.data.Write(this.buf[:n])
 	this.data.WriteString(s)
+	this.data.WriteByte('\n')
 	this.Unlock()
-
-	fmt.Println(string(this.data.Bytes()))
 }
 
 func fmtInt(b []byte, i int) {

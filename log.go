@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -73,13 +74,30 @@ func Open(dir string, size, day int, std bool) Log {
 		size:  size,
 		day:   day,
 		std:   std,
-		quit:  make(chan struct{}),
 		valid: true,
 		stack: make([]byte, 4096),
 	}
-	l.Add(1)
-	go l.syncLoop()
+	if l.dir != "" {
+		l.Add(1)
+		go l.syncLoop()
+	}
 	return l
+}
+
+func Panic(e error) {
+	if nil == e {
+		return
+	}
+
+	o := false
+	err := &logError{time: time.Now(), err: e}
+	_, err.file, err.line, o = runtime.Caller(1)
+	if !o {
+		err.file = "???"
+		err.line = -1
+	}
+
+	panic(err)
 }
 
 type logError struct {
@@ -90,7 +108,7 @@ type logError struct {
 }
 
 type Log interface {
-	Print(Level, int, string)
+	Print(Level, string)
 	Recover()
 	RecoverError(interface{})
 	Close()
@@ -105,10 +123,46 @@ type log struct {
 	std   bool
 	buf   []byte
 	data  bytes.Buffer
-	quit  chan struct{}
 	valid bool
 	stack []byte
 	line  bytes.Buffer
+	file  *os.File
+}
+
+func (this *log) print1(level Level, file, text *string, line int) {
+	this.Lock()
+	if this.std {
+		// date time
+		this.printDateTime(&this.line, time.Now())
+		// file line
+		this.printFileLine(&this.line, file, line)
+		// level
+		this.line.Write(levelFmt[level])
+		// text
+		this.line.WriteString(*text)
+		// new line
+		this.line.WriteByte('\n')
+		// std
+		os.Stderr.Write(this.line.Bytes())
+		if "" != this.dir {
+			this.data.Write(this.line.Bytes())
+		}
+		this.line.Reset()
+	} else {
+		if "" != this.dir {
+			// date time
+			this.printDateTime(&this.data, time.Now())
+			// file line
+			this.printFileLine(&this.data, file, line)
+			// level
+			this.data.Write(levelFmt[level])
+			// text
+			this.data.WriteString(*text)
+			// new line
+			this.data.WriteByte('\n')
+		}
+	}
+	this.Unlock()
 }
 
 func (this *log) printDateTime(buf *bytes.Buffer, now time.Time) {
@@ -140,57 +194,62 @@ func (this *log) printFileLine(buf *bytes.Buffer, file *string, line int) {
 	buf.Write(this.buf[:n])
 }
 
-func (this *log) Print(level Level, depth int, text string) {
-	_, f, l, o := runtime.Caller(depth)
+func (this *log) Print(level Level, text string) {
+	_, f, l, o := runtime.Caller(1)
 	if !o {
 		f = "???"
 		l = -1
 	}
-	this.Lock()
-	if this.std {
-		// date time
-		this.printDateTime(&this.line, time.Now())
-		// file line
-		this.printFileLine(&this.line, &f, l)
-		// level
-		this.line.Write(levelFmt[level])
-		// text
-		this.line.WriteString(text)
-		// new line
-		this.line.WriteByte('\n')
-		// std
-		os.Stderr.Write(this.line.Bytes())
-		this.data.Write(this.line.Bytes())
-		this.line.Reset()
-	} else {
-		// date time
-		this.printDateTime(&this.data, time.Now())
-		// file line
-		this.printFileLine(&this.data, &f, l)
-		// level
-		this.data.Write(levelFmt[level])
-		// text
-		this.data.WriteString(text)
-		// new line
-		this.data.WriteByte('\n')
-	}
-	this.Unlock()
+	this.print1(level, &f, &text, l)
 }
 
-func Panic(e error) {
-	if nil == e {
-		return
+func (this *log) findPanicFileLine() []byte {
+	var stack []byte
+	for {
+		n := runtime.Stack(this.stack, false)
+		if n < len(this.stack) {
+			stack = this.stack[:n]
+			break
+		}
+		this.stack = make([]byte, len(this.stack)+1024)
 	}
-
-	err := &logError{time: time.Now(), err: e}
-	o := false
-	_, err.file, err.line, o = runtime.Caller(1)
-	if !o {
-		err.file = "???"
-		err.line = -1
+	if len(stack) > 0 {
+		for len(stack) > 0 {
+			i := bytes.IndexByte(stack, '\n')
+			if i < 0 {
+				stack = unknownFileLine
+				break
+			}
+			if bytes.Contains(stack[:i], []byte("/runtime/panic.go")) {
+				stack = stack[i+1:]
+				for i := 0; i < 2; i++ {
+					i = bytes.IndexByte(stack, '\n')
+					if i < 0 {
+						stack = unknownFileLine
+						break
+					}
+					stack = stack[i+1:]
+				}
+				i = bytes.IndexByte(stack, os.PathSeparator)
+				if i < 0 {
+					stack = unknownFileLine
+					break
+				}
+				stack = stack[i:]
+				i = bytes.IndexByte(stack, ' ')
+				if i < 0 {
+					stack = unknownFileLine
+					break
+				}
+				stack = stack[:i]
+				break
+			}
+			stack = stack[i+1:]
+		}
+	} else {
+		stack = unknownFileLine
 	}
-
-	panic(err)
+	return stack
 }
 
 func (this *log) Recover() {
@@ -201,108 +260,39 @@ func (this *log) RecoverError(re interface{}) {
 	if nil == re {
 		return
 	}
-
 	switch re.(type) {
 	case *logError:
 		err := re.(*logError)
-		this.Lock()
-		if this.std {
-			// date time
-			this.printDateTime(&this.line, err.time)
-			// file line
-			this.printFileLine(&this.line, &err.file, err.line)
-			// level
-			this.line.Write(levelFmt[LEVEL_RECOVER])
-			// text
-			this.line.WriteString(err.err.Error())
-			// new line
-			this.line.WriteByte('\n')
-			// std
-			os.Stderr.Write(this.line.Bytes())
-			this.data.Write(this.line.Bytes())
-			this.line.Reset()
-		} else {
-			// date time
-			this.printDateTime(&this.data, err.time)
-			// file line
-			this.printFileLine(&this.data, &err.file, err.line)
-			// level
-			this.data.Write(levelFmt[LEVEL_RECOVER])
-			// text
-			this.data.WriteString(err.err.Error())
-			// new line
-			this.data.WriteByte('\n')
-		}
-		this.Unlock()
+		text := err.err.Error()
+		this.print1(LEVEL_RECOVER, &err.file, &text, err.line)
 	default:
 		this.Lock()
-		var stack []byte
-		for {
-			n := runtime.Stack(this.stack, false)
-			if n < len(this.stack) {
-				stack = this.stack[:n]
-				break
-			}
-			this.stack = make([]byte, len(this.stack)+1024)
-		}
-		if len(stack) > 0 {
-			for len(stack) > 0 {
-				i := bytes.IndexByte(stack, '\n')
-				if i < 0 {
-					stack = unknownFileLine
-					break
-				}
-				if bytes.Contains(stack[:i], []byte("/runtime/panic.go")) {
-					stack = stack[i+1:]
-					for i := 0; i < 2; i++ {
-						i = bytes.IndexByte(stack, '\n')
-						if i < 0 {
-							stack = unknownFileLine
-							break
-						}
-						stack = stack[i+1:]
-					}
-					i = bytes.IndexByte(stack, os.PathSeparator)
-					if i < 0 {
-						stack = unknownFileLine
-						break
-					}
-					stack = stack[i:]
-					i = bytes.IndexByte(stack, ' ')
-					if i < 0 {
-						stack = unknownFileLine
-						break
-					}
-					stack = stack[:i]
-					break
-				}
-				stack = stack[i+1:]
-			}
-		} else {
-			stack = unknownFileLine
-		}
 		if this.std {
 			// date time
 			this.printDateTime(&this.line, time.Now())
 			// file line
-			this.line.Write(stack)
+			this.line.Write(this.findPanicFileLine())
 			// level
 			this.line.Write(levelFmt[LEVEL_PANIC])
 			// text
 			this.line.WriteString(fmt.Sprintln(re))
 			// std
 			os.Stderr.Write(this.line.Bytes())
-			this.data.Write(this.line.Bytes())
+			if "" != this.dir {
+				this.data.Write(this.line.Bytes())
+			}
 			this.line.Reset()
 		} else {
-			// date time
-			this.printDateTime(&this.data, time.Now())
-			// file line
-			this.data.Write(stack)
-			// level
-			this.data.Write(levelFmt[LEVEL_PANIC])
-			// text
-			this.data.WriteString(fmt.Sprintln(re))
+			if "" != this.dir {
+				// date time
+				this.printDateTime(&this.data, time.Now())
+				// file line
+				this.data.Write(this.findPanicFileLine())
+				// level
+				this.data.Write(levelFmt[LEVEL_PANIC])
+				// text
+				this.data.WriteString(fmt.Sprintln(re))
+			}
 		}
 		this.Unlock()
 	}
@@ -318,15 +308,73 @@ func (this *log) Close() {
 	this.valid = false
 	this.Unlock()
 
-	close(this.quit)
-
 	this.Wait()
-}
 
-func (this *log) sync() {
-
+	if nil != this.file {
+		this.file.Close()
+		this.file = nil
+	}
 }
 
 func (this *log) syncLoop() {
+	timer := time.NewTimer(time.Second)
+	defer func() {
+		recover()
+		timer.Stop()
+		this.Done()
+	}()
+	for this.valid {
+		<-timer.C
+		this.Lock()
+		if nil == this.file {
+			this.newFile()
+		}
+		if this.data.Len() > 0 {
+			_, e := this.file.Write(this.data.Bytes())
+			if nil == e {
+				this.data.Reset()
+				f, e := this.file.Stat()
+				if nil == e {
+					if int(f.Size()) >= this.size {
+						this.file.Close()
+						this.newFile()
+					}
+				} else {
+					this.file.Close()
+					this.newFile()
+				}
+			} else {
+				this.newFile()
+				_, e = this.file.Write(this.data.Bytes())
+				if nil != e {
+					this.file.Close()
+					this.file = nil
+					if this.data.Len() >= this.size {
+						this.data.Reset()
+					}
+				} else {
+					this.data.Reset()
+				}
+			}
+		}
+		this.Unlock()
+		timer.Reset(time.Second)
+	}
+}
 
+func (this *log) newFile() {
+	now := time.Now()
+	dir := filepath.Join(this.dir, now.Format(date_dir_fmt))
+	e := os.MkdirAll(dir, os.ModePerm)
+	if nil != e {
+		os.Stderr.WriteString(e.Error())
+		return
+	}
+	path := filepath.Join(dir, now.Format(time_file_fmt)+".log")
+	f, e := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
+	if nil != e {
+		os.Stderr.WriteString(e.Error())
+		return
+	}
+	this.file = f
 }

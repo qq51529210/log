@@ -324,19 +324,11 @@ func (this *log) syncLoop() {
 		timer.Stop()
 		this.Done()
 	}()
-	day_time := time.Hour * 24
-	day := time.Now()
-	day = time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, day.Location())
 	for this.valid {
-		now := <-timer.C
+		<-timer.C
 		this.Lock()
 		if nil == this.file {
 			this.newFile()
-		}
-		if now.Sub(day) >= day_time {
-			this.file.Close()
-			this.newFile()
-			day = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 		}
 		if this.data.Len() > 0 {
 			_, e := this.file.Write(this.data.Bytes())
@@ -423,7 +415,4 @@ func (this *log) newFile() {
 			}
 		}
 	}
-}
-
-func (this *log) saveFile() {
 }

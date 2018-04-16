@@ -231,12 +231,12 @@ func (this *log) findPanicFileLine() []byte {
 					}
 					stack = stack[i+1:]
 				}
-				i = bytes.IndexByte(stack, os.PathSeparator)
-				if i < 0 {
-					stack = unknownFileLine
-					break
-				}
-				stack = stack[i:]
+				stack = bytes.TrimLeftFunc(stack, func(r rune) bool {
+					if r == '\t' || r == ' ' {
+						return true
+					}
+					return false
+				})
 				i = bytes.IndexByte(stack, ' ')
 				if i < 0 {
 					stack = unknownFileLine

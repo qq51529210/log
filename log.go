@@ -3,6 +3,7 @@ package log
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -377,4 +378,41 @@ func (this *log) newFile() {
 		return
 	}
 	this.file = f
+
+	fs, e := ioutil.ReadDir(this.dir)
+	if nil != e {
+		os.Stderr.WriteString(e.Error())
+		return
+	}
+	count := len(fs)
+	if count <= this.day {
+		return
+	}
+	for count > this.day {
+		mt := time.Now()
+		mt = time.Date(mt.Year(), mt.Month(), mt.Day(), 0, 0, 0, 0, time.Local)
+		mi := -1
+		for i := 0; i < len(fs); i++ {
+			t, e := time.Parse(date_dir_fmt, fs[i].Name())
+			if nil != e {
+				count--
+				e = os.RemoveAll(filepath.Join(this.dir, fs[i].Name()))
+				if nil != e {
+					os.Stderr.WriteString(e.Error())
+				}
+				continue
+			}
+			if t.Sub(mt) < 0 {
+				mt = t
+				mi = i
+			}
+		}
+		if mi >= 0 {
+			count--
+			e = os.RemoveAll(filepath.Join(this.dir, fs[mi].Name()))
+			if nil != e {
+				os.Stderr.WriteString(e.Error())
+			}
+		}
+	}
 }

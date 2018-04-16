@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestOutput(t *testing.T) {
@@ -29,4 +30,11 @@ func TestOutput(t *testing.T) {
 		panic(errors.New("test panic"))
 	}()
 	wg.Wait()
+
+	l = Open("d:\\test.log", 1024*64, 3, false)
+	defer l.Close()
+	for {
+		l.Print(LEVEL_INFO, "test log")
+		time.Sleep(time.Millisecond*10)
+	}
 }

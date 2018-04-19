@@ -2,6 +2,7 @@ package log
 
 import (
 	"bytes"
+	"container/list"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -32,7 +33,7 @@ var (
 		[]byte(string(" [PANIC] ")),
 	}
 	unknownFileLine = []byte("???:-1")
-	endLine = []byte("\n")
+	endLine         = []byte("\n")
 )
 
 func fmtInt(b []byte, i int) {
@@ -67,11 +68,12 @@ func fmtInt2(b []byte, i int) int {
 	return n
 }
 
-func Open(dir string, size, day int, std bool) Log {
+func Open(dir string, size, day, recent int, std bool) Log {
 	l := &log{
 		dir:           dir,
 		size:          size,
 		day:           day,
+		recent:        recent,
 		std:           std,
 		valid:         true,
 		stack:         make([]byte, 4096),
@@ -79,6 +81,14 @@ func Open(dir string, size, day int, std bool) Log {
 		fmtLineNo:     newFmtLineNo(),
 		panicFileLine: newPanicFileLine(),
 	}
+
+	if l.size < 1 {
+		l.size = 1024 * 1024
+	}
+	if l.day < 1 {
+		l.day = 7
+	}
+
 	if l.dir != "" {
 		l.Add(1)
 		go l.syncLoop()
@@ -227,20 +237,23 @@ type Log interface {
 	Recover()
 	RecoverError(interface{})
 	Close()
+	Recently() []string
 }
 
 type log struct {
-	sync.Mutex
+	sync.RWMutex
 	sync.WaitGroup
-	dir   string
-	size  int
-	day   int
-	std   bool
-	data  bytes.Buffer
-	valid bool
-	stack []byte
-	line  bytes.Buffer
-	file  *os.File
+	dir    string
+	size   int
+	day    int
+	recent int
+	std    bool
+	data   bytes.Buffer
+	valid  bool
+	stack  []byte
+	line   bytes.Buffer
+	file   *os.File
+	list   list.List
 	fmtDateTime
 	fmtLineNo
 	panicFileLine
@@ -272,19 +285,35 @@ func (this *log) RecoverError(re interface{}) {
 		text := fmt.Sprintln(re)
 		file_line := this.panicFileLine.Find()
 		this.Lock()
-		if this.std {
+		if this.recent < 1 {
+			if this.std {
+				this.print3(&this.line, LEVEL_PANIC, file_line, &text)
+				os.Stderr.Write(this.line.Bytes())
+				if "" != this.dir {
+					this.data.Write(this.line.Bytes())
+				}
+				this.line.Reset()
+			} else {
+				if "" != this.dir {
+					this.print3(&this.data, LEVEL_PANIC, file_line, &text)
+				}
+			}
+		} else {
 			this.print3(&this.line, LEVEL_PANIC, file_line, &text)
-			os.Stderr.Write(this.line.Bytes())
+			if this.list.Len() >= this.recent {
+				this.list.Remove(this.list.Front())
+			}
+			this.list.PushBack(string(this.line.Bytes()))
+			if this.std {
+				os.Stderr.Write(this.line.Bytes())
+			}
 			if "" != this.dir {
 				this.data.Write(this.line.Bytes())
 			}
 			this.line.Reset()
-		} else {
-			if "" != this.dir {
-				this.print3(&this.data, LEVEL_PANIC, file_line, &text)
-			}
 		}
 		this.Unlock()
+
 	}
 
 }
@@ -306,19 +335,44 @@ func (this *log) Close() {
 	}
 }
 
+func (this *log) Recently() []string {
+	recent := make([]string, 0)
+	this.RLock()
+	for ele := this.list.Front(); nil != ele; ele = ele.Next() {
+		recent = append(recent, ele.Value.(string))
+	}
+	this.RUnlock()
+	return recent
+}
+
 func (this *log) print1(level Level, file, text *string, line int) {
 	this.Lock()
-	if this.std {
+	if this.recent < 1 {
+		if this.std {
+			this.print2(&this.line, level, file, text, line)
+			os.Stderr.Write(this.line.Bytes())
+			if "" != this.dir {
+				this.data.Write(this.line.Bytes())
+			}
+			this.line.Reset()
+		} else {
+			if "" != this.dir {
+				this.print2(&this.data, level, file, text, line)
+			}
+		}
+	} else {
 		this.print2(&this.line, level, file, text, line)
-		os.Stderr.Write(this.line.Bytes())
+		if this.list.Len() >= this.recent {
+			this.list.Remove(this.list.Front())
+		}
+		this.list.PushBack(string(this.line.Bytes()))
+		if this.std {
+			os.Stderr.Write(this.line.Bytes())
+		}
 		if "" != this.dir {
 			this.data.Write(this.line.Bytes())
 		}
 		this.line.Reset()
-	} else {
-		if "" != this.dir {
-			this.print2(&this.data, level, file, text, line)
-		}
 	}
 	this.Unlock()
 }

@@ -56,12 +56,14 @@ func fmtInt2(b []byte, i int) int {
 	n := 0
 	for i >= 10 {
 		j := i
+		k := 1
 		for j >= 10 {
 			j /= 10
+			k *= 10
 		}
 		b[n] = byte('0' + j)
 		n++
-		i %= 10 * n
+		i %= k
 	}
 	b[n] = byte('0' + i)
 	n++

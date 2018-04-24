@@ -54,19 +54,22 @@ func fmtInt(b []byte, i int) {
 
 func fmtInt2(b []byte, i int) int {
 	n := 0
-	for i >= 10 {
-		j := i
-		k := 1
-		for j >= 10 {
-			j /= 10
-			k *= 10
-		}
-		b[n] = byte('0' + j)
+	for i > 0 {
+		b[n] = byte('0' + i%10)
+		i /= 10
 		n++
-		i %= k
 	}
-	b[n] = byte('0' + i)
-	n++
+	k := n - 1
+	m := byte(0)
+	for j := 0; j < n; j++ {
+		m = b[j]
+		b[j] = b[k]
+		b[k] = m
+		k--
+		if j >= k {
+			break
+		}
+	}
 	return n
 }
 

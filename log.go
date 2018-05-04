@@ -168,8 +168,6 @@ func newFmtLineNo() fmtLineNo {
 func (this fmtLineNo) Fmt(line int) int {
 	this[0] = ':'
 	n := fmtInt2(this[1:], line) + 1
-	this[n] = ':'
-	n++
 	return n
 }
 
@@ -189,43 +187,37 @@ func (this panicFileLine) Find() []byte {
 		}
 		this = make([]byte, len(this)+1024)
 	}
-	if len(stack) > 0 {
-		for len(stack) > 0 {
-			i := bytes.IndexByte(stack, '\n')
-			if i < 0 {
-				stack = unknownFileLine
-				break
-			}
-			if bytes.Contains(stack[:i], []byte("/runtime/panic.go")) {
-				stack = stack[i+1:]
-				for i := 0; i < 2; i++ {
-					i = bytes.IndexByte(stack, '\n')
-					if i < 0 {
-						stack = unknownFileLine
-						break
-					}
-					stack = stack[i+1:]
-				}
-				stack = bytes.TrimLeftFunc(stack, func(r rune) bool {
-					if r == '\t' || r == ' ' {
-						return true
-					}
-					return false
-				})
-				i = bytes.IndexByte(stack, ' ')
-				if i < 0 {
-					stack = unknownFileLine
-					break
-				}
-				stack = stack[:i]
-				break
-			}
-			stack = stack[i+1:]
+	for len(stack) > 0 {
+		i := bytes.IndexByte(stack, '\n')
+		if i < 0 {
+			return unknownFileLine
 		}
-	} else {
-		stack = unknownFileLine
+		line := stack[:i]
+		stack = stack[i+1:]
+		if bytes.Contains(line, []byte("/runtime/panic.go")) {
+			for j := 0; j < 2; j++ {
+				i = bytes.IndexByte(stack, '\n')
+				if i < 0 {
+					return unknownFileLine
+				}
+				line = stack[:i]
+				stack = stack[i+1:]
+			}
+			for j := 0; j < len(line); j++ {
+				if line[j] != ' ' && line[j] != '\t' {
+					//line = line[j:]
+					//for k := len(line) - 1; k >= 0; k-- {
+					//	if line[k] == '/' || line[k] == '\\' {
+					//		return line[k+1:]
+					//	}
+					//}
+					return line[j:]
+				}
+			}
+			break
+		}
 	}
-	return stack
+	return unknownFileLine
 }
 
 type Level int

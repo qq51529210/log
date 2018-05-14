@@ -279,7 +279,7 @@ func (this *log) RecoverError(re interface{}) {
 		text := err.err.Error()
 		this.print1(LEVEL_RECOVER, &err.file, &text, err.line)
 	default:
-		text := fmt.Sprintln(re)
+		text := fmt.Sprint(re)
 		file_line := this.panicFileLine.Find()
 		this.Lock()
 		if this.recent < 1 {
@@ -310,9 +310,7 @@ func (this *log) RecoverError(re interface{}) {
 			this.line.Reset()
 		}
 		this.Unlock()
-
 	}
-
 }
 
 func (this *log) Close() {

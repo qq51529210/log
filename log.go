@@ -231,8 +231,8 @@ type logError struct {
 
 type Log interface {
 	Print(Level, string)
-	Recover()
-	RecoverError(interface{})
+	Recover() bool
+	RecoverError(interface{}) bool
 	Close()
 	Recently() []string
 }
@@ -265,13 +265,13 @@ func (this *log) Print(level Level, text string) {
 	this.print1(level, &f, &text, l)
 }
 
-func (this *log) Recover() {
-	this.RecoverError(recover())
+func (this *log) Recover() bool {
+	return this.RecoverError(recover())
 }
 
-func (this *log) RecoverError(re interface{}) {
+func (this *log) RecoverError(re interface{}) bool {
 	if nil == re {
-		return
+		return false
 	}
 	switch re.(type) {
 	case *logError:
@@ -311,6 +311,7 @@ func (this *log) RecoverError(re interface{}) {
 		}
 		this.Unlock()
 	}
+	return true
 }
 
 func (this *log) Close() {

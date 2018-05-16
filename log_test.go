@@ -7,26 +7,16 @@ import (
 )
 
 func TestOutput(t *testing.T) {
-	l := Open("", 0, 0, true)
-	l.Print(LEVEL_DEBUG, "LEVEL_DEBUG")
-	l.Print(LEVEL_WARN, "LEVEL_WARN")
-	l.Print(LEVEL_INFO, "LEVEL_INFO")
-	l.Print(LEVEL_ERROR, "LEVEL_ERROR")
-	wg := &sync.WaitGroup{}
-	wg.Add(2)
-	go func() {
-		defer func() {
-			l.RecoverError(recover())
-			wg.Done()
-		}()
-		Panic(errors.New("test log panic"))
-	}()
-	go func() {
-		defer func() {
-			l.RecoverError(recover())
-			wg.Done()
-		}()
-		panic(errors.New("test panic"))
-	}()
-	wg.Wait()
+	l := Open("", 0, 0, 0, true)
+	l.Debug(0, "Debug")
+	l.Warn(0, "Warn")
+	l.Info(0, "Info")
+	l.Error(0, "Error")
+
+	l.DebugF(0, "Debug %v", 1)
+	l.WarnF(0, "Warn %v", 2)
+	l.InfoF(0, "Info %v", 3)
+	l.ErrorF(0, "Error %v", 4)
+
+	l.Close()
 }

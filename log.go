@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	LEVEL_DEBUG  Level = iota
-	LEVEL_WARN
+	_LEVEL_      Level = iota
+	LEVEL_DEBUG
 	LEVEL_INFO
+	LEVEL_WARN
 	LEVEL_ERROR
 	_LEVEL_PANIC
 )
@@ -175,7 +176,7 @@ func fmtInt2(b []byte, i int) int {
 	return n
 }
 
-func Open(dir string, size, day, recent int, std bool) Logger {
+func Open(dir, level string, size, day, recent int, std bool) Logger {
 	l := &logger{
 		dir:           dir,
 		size:          size,
@@ -187,6 +188,20 @@ func Open(dir string, size, day, recent int, std bool) Logger {
 		fmtDateTime:   newFmtDateTime(),
 		fmtLineNo:     newFmtLineNo(),
 		panicFileLine: newPanicFileLine(),
+	}
+	switch level {
+	case "debug":
+		l.level = LEVEL_DEBUG
+	case "info":
+		l.level = LEVEL_INFO
+	case "warn":
+		l.level = LEVEL_WARN
+	case "error":
+		l.level = LEVEL_ERROR
+	case "panic":
+		l.level = _LEVEL_PANIC
+	default:
+		l.level = _LEVEL_
 	}
 
 	if l.size < 1 {
@@ -273,6 +288,7 @@ type Logger interface {
 type logger struct {
 	sync.RWMutex
 	sync.WaitGroup
+	level  Level
 	dir    string
 	size   int
 	day    int
@@ -290,67 +306,99 @@ type logger struct {
 }
 
 func (this *logger) Debug(text string) {
-	this.print0(LEVEL_DEBUG, 2, &text)
+	if this.level <= LEVEL_DEBUG {
+		this.print0(LEVEL_DEBUG, 2, &text)
+	}
 }
 
 func (this *logger) DebugF(format string, value ...interface{}) {
-	this.DebugSkip(1, fmt.Sprintf(format, value...))
+	if this.level <= LEVEL_DEBUG {
+		this.DebugSkip(1, fmt.Sprintf(format, value...))
+	}
 }
 
 func (this *logger) Warn(text string) {
-	this.print0(LEVEL_WARN, 2, &text)
+	if this.level <= LEVEL_WARN {
+		this.print0(LEVEL_WARN, 2, &text)
+	}
 }
 
 func (this *logger) WarnF(format string, value ...interface{}) {
-	this.WarnSkip(1, fmt.Sprintf(format, value...))
+	if this.level <= LEVEL_WARN {
+		this.WarnSkip(1, fmt.Sprintf(format, value...))
+	}
 }
 
 func (this *logger) Info(text string) {
-	this.print0(LEVEL_INFO, 2, &text)
+	if this.level <= LEVEL_INFO {
+		this.print0(LEVEL_INFO, 2, &text)
+	}
 }
 
 func (this *logger) InfoF(format string, value ...interface{}) {
-	this.InfoSkip(1, fmt.Sprintf(format, value...))
+	if this.level <= LEVEL_INFO {
+		this.InfoSkip(1, fmt.Sprintf(format, value...))
+	}
 }
 
 func (this *logger) Error(text string) {
-	this.print0(LEVEL_ERROR, 2, &text)
+	if this.level <= LEVEL_ERROR {
+		this.print0(LEVEL_ERROR, 2, &text)
+	}
 }
 
 func (this *logger) ErrorF(format string, value ...interface{}) {
-	this.ErrorSkip(1, fmt.Sprintf(format, value...))
+	if this.level <= LEVEL_ERROR {
+		this.ErrorSkip(1, fmt.Sprintf(format, value...))
+	}
 }
 
 func (this *logger) DebugSkip(skip int, text string) {
-	this.print0(LEVEL_DEBUG, skip+2, &text)
+	if this.level <= LEVEL_DEBUG {
+		this.print0(LEVEL_DEBUG, skip+2, &text)
+	}
 }
 
 func (this *logger) DebugSkipF(skip int, format string, value ...interface{}) {
-	this.DebugSkip(skip+1, fmt.Sprintf(format, value...))
+	if this.level <= LEVEL_DEBUG {
+		this.DebugSkip(skip+1, fmt.Sprintf(format, value...))
+	}
 }
 
 func (this *logger) WarnSkip(skip int, text string) {
-	this.print0(LEVEL_WARN, skip+2, &text)
+	if this.level <= LEVEL_WARN {
+		this.print0(LEVEL_WARN, skip+2, &text)
+	}
 }
 
 func (this *logger) WarnSkipF(skip int, format string, value ...interface{}) {
-	this.WarnSkip(skip+1, fmt.Sprintf(format, value...))
+	if this.level <= LEVEL_WARN {
+		this.WarnSkip(skip+1, fmt.Sprintf(format, value...))
+	}
 }
 
 func (this *logger) InfoSkip(skip int, text string) {
-	this.print0(LEVEL_INFO, skip+2, &text)
+	if this.level <= LEVEL_INFO {
+		this.print0(LEVEL_INFO, skip+2, &text)
+	}
 }
 
 func (this *logger) InfoSkipF(skip int, format string, value ...interface{}) {
-	this.InfoSkip(skip+1, fmt.Sprintf(format, value...))
+	if this.level <= LEVEL_INFO {
+		this.InfoSkip(skip+1, fmt.Sprintf(format, value...))
+	}
 }
 
 func (this *logger) ErrorSkip(skip int, text string) {
-	this.print0(LEVEL_ERROR, skip+2, &text)
+	if this.level <= LEVEL_ERROR {
+		this.print0(LEVEL_ERROR, skip+2, &text)
+	}
 }
 
 func (this *logger) ErrorSkipF(skip int, format string, value ...interface{}) {
-	this.ErrorSkip(skip+1, fmt.Sprintf(format, value...))
+	if this.level <= LEVEL_ERROR {
+		this.ErrorSkip(skip+1, fmt.Sprintf(format, value...))
+	}
 }
 
 func (this *logger) RecoverInside() bool {

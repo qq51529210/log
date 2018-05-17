@@ -203,16 +203,27 @@ func Open(dir string, size, day, recent int, std bool) Logger {
 	return l
 }
 
-func Printf(level Level, skip int, format string, value ...interface{}) {
-	text := fmt.Sprintf(format, value...)
+func PrintF(level Level, format string, value ...interface{}) {
+	PrintSkip(level, 1, fmt.Sprintf(format, value...))
+}
+
+func PrintSkipF(level Level, skip int, format string, value ...interface{}) {
+	PrintSkip(level, skip+1, fmt.Sprintf(format, value...))
+}
+
+func Print(level Level, text string) {
+	_log.print0(level, 2, &text)
+}
+
+func PrintSkip(level Level, skip int, text string) {
 	_log.print0(level, skip+2, &text)
 }
 
-func Print(level Level, skip int, text string) {
-	_log.print0(level, skip+2, &text)
+func Panic(value interface{}) {
+	PanicSkip(1, value)
 }
 
-func Panic(skip int, value interface{}) {
+func PanicSkip(skip int, value interface{}) {
 	if nil == value {
 		return
 	}
@@ -226,15 +237,32 @@ func Panic(skip int, value interface{}) {
 	panic(info)
 }
 
+func PanicF(format string, value ... interface{}) {
+	PanicSkip(1, fmt.Sprintf(format, value...))
+}
+
+func PanicSkipF(skip int, format string, value ... interface{}) {
+	PanicSkip(skip+1, fmt.Sprintf(format, value...))
+}
+
 type Logger interface {
-	Debug(skip int, text string)
-	DebugF(skip int, format string, value ...interface{})
-	Warn(skip int, text string)
-	WarnF(skip int, format string, value ...interface{})
-	Info(skip int, text string)
-	InfoF(skip int, format string, value ...interface{})
-	Error(skip int, text string)
-	ErrorF(skip int, format string, value ...interface{})
+	Debug(text string)
+	DebugF(format string, value ...interface{})
+	Warn(text string)
+	WarnF(format string, value ...interface{})
+	Info(text string)
+	InfoF(format string, value ...interface{})
+	Error(text string)
+	ErrorF(format string, value ...interface{})
+
+	DebugSkip(skip int, text string)
+	DebugSkipF(skip int, format string, value ...interface{})
+	WarnSkip(skip int, text string)
+	WarnSkipF(skip int, format string, value ...interface{})
+	InfoSkip(skip int, text string)
+	InfoSkipF(skip int, format string, value ...interface{})
+	ErrorSkip(skip int, text string)
+	ErrorSkipF(skip int, format string, value ...interface{})
 
 	RecoverInside() bool
 	RecoverOutside(re interface{}) bool
@@ -261,36 +289,68 @@ type logger struct {
 	panicFileLine
 }
 
-func (this *logger) Debug(skip int, text string) {
+func (this *logger) Debug(text string) {
+	this.print0(LEVEL_DEBUG, 2, &text)
+}
+
+func (this *logger) DebugF(format string, value ...interface{}) {
+	this.DebugSkip(1, fmt.Sprintf(format, value...))
+}
+
+func (this *logger) Warn(text string) {
+	this.print0(LEVEL_WARN, 2, &text)
+}
+
+func (this *logger) WarnF(format string, value ...interface{}) {
+	this.WarnSkip(1, fmt.Sprintf(format, value...))
+}
+
+func (this *logger) Info(text string) {
+	this.print0(LEVEL_INFO, 2, &text)
+}
+
+func (this *logger) InfoF(format string, value ...interface{}) {
+	this.InfoSkip(1, fmt.Sprintf(format, value...))
+}
+
+func (this *logger) Error(text string) {
+	this.print0(LEVEL_ERROR, 2, &text)
+}
+
+func (this *logger) ErrorF(format string, value ...interface{}) {
+	this.ErrorSkip(1, fmt.Sprintf(format, value...))
+}
+
+func (this *logger) DebugSkip(skip int, text string) {
 	this.print0(LEVEL_DEBUG, skip+2, &text)
 }
 
-func (this *logger) DebugF(skip int, format string, value ...interface{}) {
-	this.Debug(skip+1, fmt.Sprintf(format, value...))
+func (this *logger) DebugSkipF(skip int, format string, value ...interface{}) {
+	this.DebugSkip(skip+1, fmt.Sprintf(format, value...))
 }
 
-func (this *logger) Warn(skip int, text string) {
+func (this *logger) WarnSkip(skip int, text string) {
 	this.print0(LEVEL_WARN, skip+2, &text)
 }
 
-func (this *logger) WarnF(skip int, format string, value ...interface{}) {
-	this.Warn(skip+1, fmt.Sprintf(format, value...))
+func (this *logger) WarnSkipF(skip int, format string, value ...interface{}) {
+	this.WarnSkip(skip+1, fmt.Sprintf(format, value...))
 }
 
-func (this *logger) Info(skip int, text string) {
+func (this *logger) InfoSkip(skip int, text string) {
 	this.print0(LEVEL_INFO, skip+2, &text)
 }
 
-func (this *logger) InfoF(skip int, format string, value ...interface{}) {
-	this.Info(skip+1, fmt.Sprintf(format, value...))
+func (this *logger) InfoSkipF(skip int, format string, value ...interface{}) {
+	this.InfoSkip(skip+1, fmt.Sprintf(format, value...))
 }
 
-func (this *logger) Error(skip int, text string) {
+func (this *logger) ErrorSkip(skip int, text string) {
 	this.print0(LEVEL_ERROR, skip+2, &text)
 }
 
-func (this *logger) ErrorF(skip int, format string, value ...interface{}) {
-	this.Error(skip+1, fmt.Sprintf(format, value...))
+func (this *logger) ErrorSkipF(skip int, format string, value ...interface{}) {
+	this.ErrorSkip(skip+1, fmt.Sprintf(format, value...))
 }
 
 func (this *logger) RecoverInside() bool {

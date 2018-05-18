@@ -34,11 +34,11 @@ var (
 	date_dir_fmt  = "20060102"
 	time_file_fmt = "150405.999999999"
 	levelFmt      = [][]byte{
+		[]byte(string(" [NULL] ")),
 		[]byte(string(" [DEBUG] ")),
-		[]byte(string(" [WARN] ")),
 		[]byte(string(" [INFO] ")),
+		[]byte(string(" [WARN] ")),
 		[]byte(string(" [ERROR] ")),
-		[]byte(string(" [RECOVER] ")),
 		[]byte(string(" [PANIC] ")),
 	}
 	unknownFileLine = []byte("???:-1")

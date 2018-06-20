@@ -239,9 +239,6 @@ func Panic(value interface{}) {
 }
 
 func PanicSkip(skip int, value interface{}) {
-	if nil == value {
-		return
-	}
 	o := false
 	info := &panicInfo{time: time.Now(), value: value}
 	_, info.file, info.line, o = runtime.Caller(skip + 1)

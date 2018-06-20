@@ -234,6 +234,13 @@ func PrintSkip(level Level, skip int, text string) {
 	_log.print0(level, skip+2, &text)
 }
 
+func CheckError(e error) {
+	if nil == e {
+		return
+	}
+	PanicSkip(1, e)
+}
+
 func Panic(value interface{}) {
 	PanicSkip(1, value)
 }

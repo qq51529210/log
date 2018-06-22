@@ -30,6 +30,18 @@ type panicInfo struct {
 	time  time.Time
 }
 
+func (this *panicInfo) String() string {
+	dt := newFmtDateTime()
+	dt.Fmt(this.time)
+	s := string(dt)
+	s += this.file
+	ln := newFmtLineNo()
+	s += string(ln[:ln.Fmt(this.line)])
+	s += string(levelFmt[_LEVEL_PANIC])
+	s += fmt.Sprintf("%v\n", this.value)
+	return s
+}
+
 var (
 	date_dir_fmt  = "20060102"
 	time_file_fmt = "150405.999999999"

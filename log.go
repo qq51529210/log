@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"runtime/debug"
 )
 
 const (
@@ -19,6 +20,7 @@ const (
 	LEVEL_WARN
 	LEVEL_ERROR
 	_LEVEL_PANIC
+	_LEVEL_STACK
 )
 
 type Level int
@@ -52,8 +54,9 @@ var (
 		[]byte(string(" [WARN] ")),
 		[]byte(string(" [ERROR] ")),
 		[]byte(string(" [PANIC] ")),
+		[]byte(string(" [STACK] ")),
 	}
-	unknownFileLine = []byte("???:-1")
+	unknownFileLine = [][]byte{[]byte("???:-1")}
 	endLine         = []byte("\n")
 	_log            = &logger{
 		std:           true,
@@ -71,7 +74,8 @@ func newPanicFileLine() panicFileLine {
 	return make([]byte, 32)
 }
 
-func (this panicFileLine) Find() []byte {
+func (this panicFileLine) Find() [][]byte {
+	lines := make([][]byte, 0)
 	var stack []byte
 	for {
 		n := runtime.Stack(this, false)
@@ -82,6 +86,7 @@ func (this panicFileLine) Find() []byte {
 		this = make([]byte, len(this)+1024)
 	}
 	for len(stack) > 0 {
+		// read line
 		i := bytes.IndexByte(stack, '\n')
 		if i < 0 {
 			return unknownFileLine
@@ -89,26 +94,24 @@ func (this panicFileLine) Find() []byte {
 		line := stack[:i]
 		stack = stack[i+1:]
 		if bytes.Contains(line, []byte("/runtime/panic.go")) {
-			for j := 0; j < 2; j++ {
+			for len(stack) > 0 {
 				i = bytes.IndexByte(stack, '\n')
 				if i < 0 {
 					return unknownFileLine
 				}
 				line = stack[:i]
 				stack = stack[i+1:]
-			}
-			for j := 0; j < len(line); j++ {
-				if line[j] != ' ' && line[j] != '\t' {
-					//line = line[j:]
-					//for k := len(line) - 1; k >= 0; k-- {
-					//	if line[k] == '/' || line[k] == '\\' {
-					//		return line[k+1:]
-					//	}
-					//}
-					return line[j:]
+				// file line
+				if line[0] == '\t' {
+					for j := 1; j < len(line); j++ {
+						if line[j] == ' ' {
+							lines = append(lines, line[1:j])
+							break
+						}
+					}
 				}
 			}
-			break
+			return lines
 		}
 	}
 	return unknownFileLine
@@ -450,6 +453,7 @@ func (this *logger) RecoverOutside(re interface{}) bool {
 			}
 		default:
 			this.print3(&this.line, _LEVEL_PANIC, file_line, &text)
+			this.line.Write(debug.Stack())
 			if this.list.Len() >= this.recent {
 				this.list.Remove(this.list.Front())
 			}
@@ -545,13 +549,23 @@ func (this *logger) print2(buf *bytes.Buffer, level Level, file, text *string, l
 	buf.WriteByte('\n')
 }
 
-func (this *logger) print3(buf *bytes.Buffer, level Level, fileLine []byte, text *string) {
+func (this *logger) print3(buf *bytes.Buffer, level Level, fileLine [][]byte, text *string) {
 	this.fmtDateTime.Fmt(time.Now())
 	buf.Write(this.fmtDateTime)
-	buf.Write(fileLine)
+	buf.Write(fileLine[0])
 	buf.Write(levelFmt[level])
 	buf.WriteString(*text)
 	buf.WriteByte('\n')
+	for i := 1; i < len(fileLine); i++ {
+		buf.Write(this.fmtDateTime)
+		buf.Write(fileLine[i])
+		buf.Write(levelFmt[_LEVEL_STACK])
+		buf.WriteByte('\n')
+	}
+}
+
+func (this *logger) print4(buf *bytes.Buffer, level Level, text *string) {
+
 }
 
 func (this *logger) syncLoop() {

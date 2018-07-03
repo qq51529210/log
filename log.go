@@ -194,38 +194,15 @@ func fmtInt2(b []byte, i int) int {
 func Open(dir, level string, size, day, recent int, std bool) Logger {
 	l := &logger{
 		dir:           dir,
-		size:          size,
-		day:           day,
-		recent:        recent,
-		std:           std,
 		valid:         true,
 		stack:         make([]byte, 4096),
 		fmtDateTime:   newFmtDateTime(),
 		fmtLineNo:     newFmtLineNo(),
 		panicFileLine: newPanicFileLine(),
 	}
-	switch level {
-	case "debug":
-		l.level = LEVEL_DEBUG
-	case "info":
-		l.level = LEVEL_INFO
-	case "warn":
-		l.level = LEVEL_WARN
-	case "error":
-		l.level = LEVEL_ERROR
-	case "panic":
-		l.level = _LEVEL_PANIC
-	default:
-		l.level = _LEVEL_
-	}
-
-	if l.size < 1 {
-		l.size = 1024 * 1024
-	}
-	if l.day < 1 {
-		l.day = 7
-	}
-
+	l.SetLevel(level)
+	l.SetSize(size)
+	l.SetDay(day)
 	if l.dir != "" {
 		l.Add(1)
 		go l.syncLoop()
@@ -298,6 +275,11 @@ type Logger interface {
 	ErrorSkip(skip int, text string)
 	ErrorSkipF(skip int, format string, value ...interface{})
 
+	SetSize(int)
+	SetDay(int)
+	SetRecent(int)
+	SetLevel(string)
+	EnableStdOutput(bool)
 	RecoverInside() bool
 	RecoverOutside(re interface{}) bool
 	Close()
@@ -322,6 +304,45 @@ type logger struct {
 	fmtDateTime
 	fmtLineNo
 	panicFileLine
+}
+
+func (this *logger) SetLevel(level string) {
+	switch level {
+	case "debug":
+		this.level = LEVEL_DEBUG
+	case "info":
+		this.level = LEVEL_INFO
+	case "warn":
+		this.level = LEVEL_WARN
+	case "error":
+		this.level = LEVEL_ERROR
+	case "panic":
+		this.level = _LEVEL_PANIC
+	default:
+		this.level = _LEVEL_
+	}
+}
+
+func (this *logger) SetSize(n int) {
+	if n < 1 {
+		n = 1024 * 1024
+	}
+	this.size = n
+}
+
+func (this *logger) SetDay(n int) {
+	if n < 1 {
+		n = 7
+	}
+	this.day = n
+}
+
+func (this *logger) SetRecent(n int) {
+	this.recent = n
+}
+
+func (this *logger) EnableStdOutput(enable bool) {
+	this.std = enable
 }
 
 func (this *logger) Debug(text string) {

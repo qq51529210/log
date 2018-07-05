@@ -195,6 +195,8 @@ func Open(dir, level string, size, day, recent int, std bool) Logger {
 	l := &logger{
 		dir:           dir,
 		valid:         true,
+		std:           std,
+		recent:        recent,
 		stack:         make([]byte, 4096),
 		fmtDateTime:   newFmtDateTime(),
 		fmtLineNo:     newFmtLineNo(),

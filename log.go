@@ -74,7 +74,7 @@ func newPanicFileLine() panicFileLine {
 	return make([]byte, 32)
 }
 
-func (this panicFileLine) Find() [][]byte {
+func (this panicFileLine) Find(fullPath bool) [][]byte {
 	lines := make([][]byte, 0)
 	var stack []byte
 	for {
@@ -105,7 +105,20 @@ func (this panicFileLine) Find() [][]byte {
 				if line[0] == '\t' {
 					for j := 1; j < len(line); j++ {
 						if line[j] == ' ' {
-							lines = append(lines, line[1:j])
+							if !fullPath {
+								for k := j - 1; k >= 1; k-- {
+									if line[k] == '/' {
+										l := make([]byte, j-k)
+										copy(l, line[k+1:j])
+										lines = append(lines, l)
+										break
+									}
+								}
+							} else {
+								l := make([]byte, j-1)
+								copy(l, line[1:j])
+								lines = append(lines, l)
+							}
 							break
 						}
 					}
@@ -191,10 +204,11 @@ func fmtInt2(b []byte, i int) int {
 	return n
 }
 
-func Open(dir, level string, size, day, recent int, std bool) Logger {
+func Open(dir, level string, size, day, recent int, std, fullPath bool) Logger {
 	l := &logger{
 		dir:           dir,
 		valid:         true,
+		fullPath:      fullPath,
 		std:           std,
 		recent:        recent,
 		stack:         make([]byte, 4096),
@@ -291,18 +305,19 @@ type Logger interface {
 type logger struct {
 	sync.RWMutex
 	sync.WaitGroup
-	level  Level
-	dir    string
-	size   int
-	day    int
-	recent int
-	std    bool
-	data   bytes.Buffer
-	valid  bool
-	stack  []byte
-	line   bytes.Buffer
-	file   *os.File
-	list   list.List
+	level    Level
+	dir      string
+	size     int
+	day      int
+	recent   int
+	std      bool
+	data     bytes.Buffer
+	valid    bool
+	fullPath bool
+	stack    []byte
+	line     bytes.Buffer
+	file     *os.File
+	list     list.List
 	fmtDateTime
 	fmtLineNo
 	panicFileLine
@@ -458,7 +473,7 @@ func (this *logger) RecoverOutside(re interface{}) bool {
 		this.print1(_LEVEL_PANIC, &info.file, &text, info.line)
 	default:
 		text := fmt.Sprint(re)
-		file_line := this.panicFileLine.Find()
+		file_line := this.panicFileLine.Find(this.fullPath)
 		this.Lock()
 		switch this.recent {
 		case 0:
@@ -527,6 +542,14 @@ func (this *logger) print0(level Level, skip int, text *string) {
 		f = "???"
 		l = -1
 	}
+	if !this.fullPath {
+		for i := len(f) - 1; i >= 0; i-- {
+			if f[i] == '/' {
+				f = f[i+1:]
+				break
+			}
+		}
+	}
 	this.print1(level, &f, text, l)
 }
 
@@ -585,10 +608,6 @@ func (this *logger) print3(buf *bytes.Buffer, level Level, fileLine [][]byte, te
 		buf.Write(levelFmt[_LEVEL_STACK])
 		buf.WriteByte('\n')
 	}
-}
-
-func (this *logger) print4(buf *bytes.Buffer, level Level, text *string) {
-
 }
 
 func (this *logger) syncLoop() {

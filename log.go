@@ -103,24 +103,25 @@ func (this panicFileLine) Find(fullPath bool) [][]byte {
 				stack = stack[i+1:]
 				// file line
 				if line[0] == '\t' {
-					for j := 1; j < len(line); j++ {
+					j := 1
+					for ; j < len(line); j++ {
 						if line[j] == ' ' {
-							if !fullPath {
-								for k := j - 1; k >= 1; k-- {
-									if line[k] == '/' {
-										l := make([]byte, j-k)
-										copy(l, line[k+1:j])
-										lines = append(lines, l)
-										break
-									}
-								}
-							} else {
-								l := make([]byte, j-1)
-								copy(l, line[1:j])
-								lines = append(lines, l)
-							}
 							break
 						}
+					}
+					if !fullPath {
+						for k := j - 1; k >= 1; k-- {
+							if line[k] == '/' {
+								l := make([]byte, j-k)
+								copy(l, line[k+1:j])
+								lines = append(lines, l)
+								break
+							}
+						}
+					} else {
+						l := make([]byte, j-1)
+						copy(l, line[1:j])
+						lines = append(lines, l)
 					}
 				}
 			}
@@ -601,13 +602,12 @@ func (this *logger) print3(buf *bytes.Buffer, level Level, fileLine [][]byte, te
 	buf.Write(fileLine[0])
 	buf.Write(levelFmt[level])
 	buf.WriteString(*text)
-	buf.WriteByte('\n')
+	buf.Write(levelFmt[_LEVEL_STACK])
 	for i := 1; i < len(fileLine); i++ {
-		buf.Write(this.fmtDateTime)
 		buf.Write(fileLine[i])
-		buf.Write(levelFmt[_LEVEL_STACK])
-		buf.WriteByte('\n')
+		buf.WriteByte(' ')
 	}
+	buf.WriteByte('\n')
 }
 
 func (this *logger) syncLoop() {

@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"sync"
 	"time"
-	"runtime/debug"
 )
 
 const (
@@ -492,7 +491,6 @@ func (this *logger) RecoverOutside(re interface{}) bool {
 			}
 		default:
 			this.print3(&this.line, _LEVEL_PANIC, file_line, &text)
-			this.line.Write(debug.Stack())
 			if this.list.Len() >= this.recent {
 				this.list.Remove(this.list.Front())
 			}

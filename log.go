@@ -10,6 +10,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"strings"
+	"strconv"
 )
 
 const (
@@ -22,26 +24,14 @@ const (
 	_LEVEL_STACK
 )
 
+const (
+	kb = 1024
+	mb = 1024 * kb
+	gb = 1024 * mb
+	tb = 1024 * gb
+)
+
 type Level int
-
-type panicInfo struct {
-	file  string
-	line  int
-	value interface{}
-	time  time.Time
-}
-
-func (this *panicInfo) String() string {
-	dt := newFmtDateTime()
-	dt.Fmt(this.time)
-	s := string(dt)
-	s += this.file
-	ln := newFmtLineNo()
-	s += string(ln[:ln.Fmt(this.line)])
-	s += string(levelFmt[_LEVEL_PANIC])
-	s += fmt.Sprintf("%v\n", this.value)
-	return s
-}
 
 var (
 	date_dir_fmt  = "20060102"
@@ -66,6 +56,35 @@ var (
 		panicFileLine: newPanicFileLine(),
 	}
 )
+
+type Config struct {
+	Level    string `json:"level"`
+	Dir      string `json:"dir"`
+	Size     string `json:"size"`
+	Day      int    `json:"day"`
+	Resent   int    `json:"resent"`
+	STD      bool   `json:"std"`
+	FullPath bool   `json:"full_path"`
+}
+
+type panicInfo struct {
+	file  string
+	line  int
+	value interface{}
+	time  time.Time
+}
+
+func (this *panicInfo) String() string {
+	dt := newFmtDateTime()
+	dt.Fmt(this.time)
+	s := string(dt)
+	s += this.file
+	ln := newFmtLineNo()
+	s += string(ln[:ln.Fmt(this.line)])
+	s += string(levelFmt[_LEVEL_PANIC])
+	s += fmt.Sprintf("%v\n", this.value)
+	return s
+}
 
 type panicFileLine []byte
 
@@ -202,6 +221,56 @@ func fmtInt2(b []byte, i int) int {
 		}
 	}
 	return n
+}
+
+func parseBytes(s string) (uint64, error) {
+	s = strings.ToLower(s)
+	s = strings.Replace(s, "b", "", -1)
+	if strings.Contains(s, "t") {
+		s = strings.Replace(s, "t", "", -1)
+		v, e := strconv.ParseFloat(s, 64)
+		if nil != e {
+			return 0, e
+		}
+		return uint64(v * tb), nil
+	}
+	if strings.Contains(s, "g") {
+		s = strings.Replace(s, "g", "", -1)
+		v, e := strconv.ParseFloat(s, 64)
+		if nil != e {
+			return 0, e
+		}
+		return uint64(v * gb), nil
+	}
+	if strings.Contains(s, "m") {
+		s = strings.Replace(s, "m", "", -1)
+		v, e := strconv.ParseFloat(s, 64)
+		if nil != e {
+			return 0, e
+		}
+		return uint64(v * mb), nil
+	}
+	if strings.Contains(s, "k") {
+		s = strings.Replace(s, "k", "", -1)
+		v, e := strconv.ParseFloat(s, 64)
+		if nil != e {
+			return 0, e
+		}
+		return uint64(v * kb), nil
+	}
+	v, e := strconv.ParseFloat(s, 64)
+	if nil != e {
+		return 0, e
+	}
+	return uint64(v), nil
+}
+
+func OpenWith(cfg *Config) Logger {
+	size, e := parseBytes(cfg.Size)
+	if nil != e {
+		panic(e)
+	}
+	return Open(cfg.Dir, cfg.Level, int(size), cfg.Day, cfg.Resent, cfg.STD, cfg.FullPath)
 }
 
 func Open(dir, level string, size, day, recent int, std, fullPath bool) Logger {

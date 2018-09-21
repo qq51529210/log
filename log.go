@@ -589,6 +589,7 @@ func (this *logger) Close() {
 	this.Wait()
 
 	if nil != this.file {
+		this.file.Write(this.data.Bytes())
 		this.file.Close()
 		this.file = nil
 	}

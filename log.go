@@ -10,8 +10,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
-	"strings"
-	"strconv"
+	"github.com/qq51529210/common"
 )
 
 const (
@@ -22,13 +21,6 @@ const (
 	LEVEL_ERROR
 	_LEVEL_PANIC
 	_LEVEL_STACK
-)
-
-const (
-	kb = 1024
-	mb = 1024 * kb
-	gb = 1024 * mb
-	tb = 1024 * gb
 )
 
 type Level int
@@ -223,50 +215,8 @@ func fmtInt2(b []byte, i int) int {
 	return n
 }
 
-func parseBytes(s string) (uint64, error) {
-	s = strings.ToLower(s)
-	s = strings.Replace(s, "b", "", -1)
-	if strings.Contains(s, "t") {
-		s = strings.Replace(s, "t", "", -1)
-		v, e := strconv.ParseFloat(s, 64)
-		if nil != e {
-			return 0, e
-		}
-		return uint64(v * tb), nil
-	}
-	if strings.Contains(s, "g") {
-		s = strings.Replace(s, "g", "", -1)
-		v, e := strconv.ParseFloat(s, 64)
-		if nil != e {
-			return 0, e
-		}
-		return uint64(v * gb), nil
-	}
-	if strings.Contains(s, "m") {
-		s = strings.Replace(s, "m", "", -1)
-		v, e := strconv.ParseFloat(s, 64)
-		if nil != e {
-			return 0, e
-		}
-		return uint64(v * mb), nil
-	}
-	if strings.Contains(s, "k") {
-		s = strings.Replace(s, "k", "", -1)
-		v, e := strconv.ParseFloat(s, 64)
-		if nil != e {
-			return 0, e
-		}
-		return uint64(v * kb), nil
-	}
-	v, e := strconv.ParseFloat(s, 64)
-	if nil != e {
-		return 0, e
-	}
-	return uint64(v), nil
-}
-
 func OpenWith(cfg *Config) Logger {
-	size, e := parseBytes(cfg.Size)
+	size, e := common.ParseInt(cfg.Size)
 	if nil != e {
 		panic(e)
 	}

@@ -6,6 +6,7 @@ package log
 */
 
 import (
+	"strings"
 	"time"
 	"unsafe"
 	"reflect"
@@ -26,16 +27,17 @@ const (
 	_LevelStack
 )
 
-type FileLine int
+type StackLine int
 
 const (
-	FileLineNil  FileLine = iota
-	FileLineFile
-	FileLinePath
+	StackLineNil  StackLine = iota
+	StackLineFile
+	StackLinePath
 )
 
 var (
-	unknownFileLine        = [][]byte{[]byte("???:-1")}
+	unknownFile            = []byte("???")
+	unknownStackLine       = [][]byte{[]byte("???:-1")}
 	newline                = []byte("\n")
 	space                  = []byte(" ")
 	DateSeparator     byte = '-'
@@ -115,7 +117,7 @@ func getStack() [][]byte {
 	for len(stack) > 0 {
 		i := bytes.IndexByte(stack, '\n')
 		if i < 0 {
-			return unknownFileLine
+			return unknownStackLine
 		}
 		line := stack[:i]
 		stack = stack[i+1:]
@@ -123,7 +125,7 @@ func getStack() [][]byte {
 			for len(stack) > 0 {
 				i = bytes.IndexByte(stack, '\n')
 				if i < 0 {
-					return unknownFileLine
+					return unknownStackLine
 				}
 				line = stack[:i]
 				stack = stack[i+1:]
@@ -140,36 +142,45 @@ func getStack() [][]byte {
 			return lines
 		}
 	}
-	return unknownFileLine
+	return unknownStackLine
 }
 
-func Print(w io.Writer, l Level, f FileLine, d int, s string) {
+func Print(w io.Writer, l Level, f StackLine, d int, s string) {
 	t := time.Now()
-	PrintTime(w, &t)
-	PrintLevel(w, l)
+	var buf [32]byte
+	b := buf[:]
+	printTimeAndLevel(b, &t, l)
+	w.Write(b)
 	switch f {
-	case FileLineFile:
+	case StackLineFile:
 		_, f, l, o := runtime.Caller(d + 1)
 		if !o {
-			PrintFileLine(w, "???", -1)
+			w.Write(unknownFile)
+			w.Write(b[:printInt(b, 0)])
 		} else {
-			PrintFileLine(w, f, l)
+			n := strings.LastIndex(f, "/")
+			if n < 0 {
+				break
+			}
+			w.Write(unsafeBytesFromString(&f)[n:])
+			w.Write(b[:printInt(b, l)])
 		}
-	case FileLinePath:
+	case StackLinePath:
 		_, f, l, o := runtime.Caller(d + 1)
 		if !o {
-			PrintFileLine(w, "???", -1)
+			w.Write(unknownFile)
+			w.Write(b[:printInt(b, 0)])
 		} else {
-			PrintFileLine(w, f, l)
+			w.Write(unsafeBytesFromString(&f))
+			w.Write(b[:printInt(b, l)])
 		}
 	default:
 	}
-	PrintText(w, s)
+	w.Write(unsafeBytesFromString(&s))
+	w.Write(newline)
 }
 
-func PrintTime(w io.Writer, t *time.Time) {
-	var buf [30]byte
-	b := buf[:]
+func printTimeAndLevel(b []byte, t *time.Time, l Level) {
 	year, month, day := t.Date()
 	formatAlignInteger(b[0:4], year)
 	b[4] = DateSeparator
@@ -186,78 +197,64 @@ func PrintTime(w io.Writer, t *time.Time) {
 	b[19] = NanoSecSeparator
 	formatAlignInteger(b[20:29], t.Nanosecond())
 	b[29] = ' '
-	w.Write(b)
-}
-
-func PrintLevel(w io.Writer, l Level) {
-	var buf [2]byte
-	b := buf[:]
 	switch l {
 	case LevelDebug:
-		b[0] = 'd'
+		b[30] = 'd'
 	case LevelInfo:
-		b[0] = 'i'
+		b[30] = 'i'
 	case LevelWarn:
-		b[0] = 'w'
+		b[30] = 'w'
 	case LevelError:
-		b[0] = 'e'
+		b[30] = 'e'
 	case _LevelPanic:
-		b[0] = 'p'
+		b[30] = 'p'
 	case _LevelStack:
-		b[0] = 's'
+		b[30] = 's'
 	default:
-		b[0] = 'n'
+		b[30] = 'n'
 	}
-	b[1] = ' '
-	w.Write(b)
+	b[31] = ' '
 }
 
-func PrintFileLine(w io.Writer, f string, l int) {
-	w.Write(unsafeBytesFromString(&f))
-	var temp [22]byte
-	p := temp[:]
-	p[0] = ':'
-	n := formatInteger(p[1:], l)
+func printInt(b []byte, l int) int {
+	b[0] = ':'
+	n := formatInteger(b[1:], l)
 	n++
-	p[n] = ' '
+	b[n] = ' '
 	n++
-	w.Write(p[:n])
-}
-
-func PrintText(w io.Writer, s string) {
-	w.Write(unsafeBytesFromString(&s))
-	w.Write(newline)
+	return n
 }
 
 func Recover(w io.Writer, r interface{}) bool {
 	if nil == r {
 		return false
 	}
+	var buf [32]byte
+	b := buf[:]
 	switch r.(type) {
 	case *panicInfo:
 		info := r.(*panicInfo)
+		printTimeAndLevel(b, &info.t, _LevelPanic)
+		w.Write(unsafeBytesFromString(&info.f))
+		w.Write(b[:printInt(b, info.l)])
 		text := fmt.Sprint(info.e.Error())
-		PrintTime(w, &info.t)
-		PrintLevel(w, _LevelPanic)
-		PrintFileLine(w, info.f, info.l)
-		PrintText(w, text)
+		w.Write(unsafeBytesFromString(&text))
 	default:
 		now := time.Now()
-		text := fmt.Sprint(r)
+		printTimeAndLevel(b, &now, _LevelStack)
 		stacks := getStack()
-		PrintTime(w, &now)
-		PrintLevel(w, _LevelStack)
 		if len(stacks) > 0 {
 			w.Write(stacks[0])
 			w.Write(space)
 		}
+		text := fmt.Sprint(r)
 		w.Write(unsafeBytesFromString(&text))
 		w.Write(space)
 		for i := 1; i < len(stacks); i++ {
 			w.Write(stacks[i])
 			w.Write(space)
 		}
-		w.Write(newline)
 	}
+	w.Write(newline)
 	return true
 }

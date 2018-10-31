@@ -2,18 +2,22 @@ package log
 
 import (
 	"bytes"
+	"errors"
 	"os"
+	"strings"
 	"sync"
 	"time"
 	"path/filepath"
 	"io/ioutil"
-	"log"
 	"io"
 	"fmt"
+
+	"github.com/qq51529210/common"
 )
 
 const (
 	MinFileSize = 1024 * 32
+	MinDuration = 100 * time.Millisecond
 )
 
 var (
@@ -21,70 +25,139 @@ var (
 	fileFormat = "150405.999999999"
 )
 
-func NewFile(dir string, size, day int, std io.Writer) (*File) {
-	l := &File{
-		dir:   dir,
-		valid: true,
-		size:  size,
-		day:   day,
+type FileConfig struct {
+	Dir      string `json:"dir"`
+	Size     string `json:"size"`
+	Day      int    `json:"day"`
+	Std      bool   `json:"std"`
+	Level    string `json:"level"`
+	Stack    string `json:"stack"`
+	Duration int    `json:"duration"`
+}
+
+func NewFile(cfg *FileConfig) (*File, error) {
+	size, e := common.ParseInt(cfg.Size)
+	if nil != e {
+		return nil, e
 	}
-	l.log = log.New(l, "", 0)
-	l.std = std
+
+	l := &File{
+		valid: true,
+		dir:   cfg.Dir,
+		std:   cfg.Std,
+		exit:  make(chan struct{}),
+		day:   common.MaxInt(cfg.Day, 1),
+		size:  common.MaxInt(int(size), MinFileSize),
+		dur:   common.MaxDuration(time.Duration(cfg.Duration)*time.Millisecond, MinDuration),
+	}
+
 	if l.dir == "" {
 		l.dir = "./"
 	}
-	if l.size < MinFileSize {
-		l.size = MinFileSize
+
+	switch strings.ToLower(cfg.Stack) {
+	case "file":
+		l.stack = StackLineFile
+	case "path":
+		l.stack = StackLinePath
+	default:
+		l.stack = StackLineNil
 	}
-	if l.day < 1 {
-		l.day = 1
+
+	switch strings.ToLower(cfg.Level) {
+	case "info":
+		l.level = LevelInfo
+	case "warn":
+		l.level = LevelWarn
+	case "error":
+		l.level = LevelError
+	default:
+		l.level = LevelDebug
 	}
-	go l.saveLoop()
-	return l
+
+	l.timer = time.NewTimer(l.dur)
+	go l.loop()
+
+	return l, nil
 }
 
 type File struct {
 	mux   sync.Mutex
+	exit  chan struct{}
 	dir   string
 	size  int
 	day   int
 	data  bytes.Buffer
+	line  bytes.Buffer
+	std   bool
 	valid bool
 	file  *os.File
-	log   *log.Logger
-	std   io.Writer
+	level Level
+	stack StackLine
+	dur   time.Duration
+	timer *time.Timer
 }
 
-func (this *File) Write(b []byte) (int, error) {
+func (this *File) Print(l Level, d int, s string) {
 	this.mux.Lock()
-	n, e := this.data.Write(b)
-	if nil != this.std {
-		this.std.Write(b)
+	if !this.valid {
+		os.Stderr.WriteString("file has been closed")
+		this.mux.Unlock()
+		return
+	}
+	if l >= this.level {
+		Print(&this.line, l, this.stack, d+1, s)
+		if this.std {
+			os.Stderr.Write(this.line.Bytes())
+		}
+		io.Copy(&this.data, &this.line)
+		if this.data.Len() >= this.size {
+			this.save()
+		}
 	}
 	this.mux.Unlock()
-	return n, e
 }
 
-func (this *File) Print(v ...interface{}) {
-	this.log.Output(2, fmt.Sprintln(v...))
+func (this *File) Printf(l Level, d int, f string, a ...interface{}) {
+	this.Print(l, d+1, fmt.Sprintf(f, a...))
 }
 
-func (this *File) Printf(v ...interface{}) {
-	this.PrintSkip(3,fmt.Sprintln(v...))
+func (this *File) Close() error {
+	this.mux.Lock()
+	if !this.valid {
+		this.mux.Unlock()
+		return errors.New("file has been closed")
+	}
+	this.valid = false
+	this.mux.Unlock()
+
+	<-this.exit
+
+	return nil
 }
 
-func (this *File) PrintSkip(n int, v ...interface{}) {
-	this.log.Output(n+1, fmt.Sprintln(v...))
+func (this *File) save() {
 }
 
-func (this *File) saveLoop() {
-	timer := time.NewTimer(time.Second)
+func (this *File) new() {
+}
+
+func (this *File) close() {
+	if nil != this.file {
+		this.file.Write(this.data.Bytes())
+		this.file.Close()
+		this.file = nil
+	}
+}
+
+func (this *File) loop() {
 	defer func() {
 		recover()
-		timer.Stop()
+		this.timer.Stop()
+		close(this.exit)
 	}()
 	for this.valid {
-		<-timer.C
+		<-this.timer.C
 		this.mux.Lock()
 		if nil == this.file {
 			this.newFile()
@@ -118,7 +191,7 @@ func (this *File) saveLoop() {
 			}
 		}
 		this.mux.Unlock()
-		timer.Reset(time.Second)
+		this.timer.Reset(this.dur)
 	}
 }
 
@@ -173,21 +246,5 @@ func (this *File) newFile() {
 				os.Stderr.WriteString(e.Error())
 			}
 		}
-	}
-}
-
-func (this *File) Close() {
-	this.mux.Lock()
-	if !this.valid {
-		this.mux.Unlock()
-		return
-	}
-	this.valid = false
-	this.mux.Unlock()
-
-	if nil != this.file {
-		this.file.Write(this.data.Bytes())
-		this.file.Close()
-		this.file = nil
 	}
 }

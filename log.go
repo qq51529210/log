@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"runtime"
 	"bytes"
+	"os"
 )
 
 type Level int
@@ -145,13 +146,13 @@ func getStack() [][]byte {
 	return unknownStackLine
 }
 
-func Print(w io.Writer, l Level, f StackLine, d int, s string) {
+func Print(w io.Writer, l Level, s StackLine, d int, i string) {
 	t := time.Now()
 	var buf [32]byte
 	b := buf[:]
 	printTimeAndLevel(b, &t, l)
 	w.Write(b)
-	switch f {
+	switch s {
 	case StackLineFile:
 		_, f, l, o := runtime.Caller(d + 1)
 		if !o {
@@ -176,8 +177,12 @@ func Print(w io.Writer, l Level, f StackLine, d int, s string) {
 		}
 	default:
 	}
-	w.Write(unsafeBytesFromString(&s))
+	w.Write(unsafeBytesFromString(&i))
 	w.Write(newline)
+}
+
+func Printf(w io.Writer, l Level, s StackLine, d int, f string, a ... interface{}) {
+	Print(w, l, s, d+1, fmt.Sprintf(f, a...))
 }
 
 func printTimeAndLevel(b []byte, t *time.Time, l Level) {
@@ -257,4 +262,30 @@ func Recover(w io.Writer, r interface{}) bool {
 	}
 	w.Write(newline)
 	return true
+}
+
+type Logger interface {
+	Print(l Level, d int, s string)
+	Printf(l Level, d int, f string, a ...interface{})
+	Recover(r interface{}) bool
+}
+
+type StdLogger struct {
+	stack StackLine
+}
+
+func (this *StdLogger) Print(l Level, d int, s string) {
+	Print(os.Stderr, l, this.stack, d+1, s)
+}
+
+func (this *StdLogger) Printf(l Level, d int, f string, a ...interface{}) {
+	Printf(os.Stderr, l, this.stack, d+1, f, a...)
+}
+
+func (this *StdLogger) Recover(r interface{}) bool {
+	return Recover(os.Stderr, r)
+}
+
+func NewStdLogger(stack StackLine) *StdLogger {
+	return &StdLogger{stack: stack}
 }

@@ -25,7 +25,7 @@ var (
 	fileFormat = "150405.999999999"
 )
 
-type FileConfig struct {
+type FileLoggerConfig struct {
 	Dir      string `json:"dir"`
 	Size     string `json:"size"`
 	Day      int    `json:"day"`
@@ -35,13 +35,13 @@ type FileConfig struct {
 	Duration int    `json:"duration"`
 }
 
-func NewFile(cfg *FileConfig) (*File, error) {
+func NewFileLogger(cfg *FileLoggerConfig) (*FileLogger, error) {
 	size, e := common.ParseInt(cfg.Size)
 	if nil != e {
 		return nil, e
 	}
 
-	l := &File{
+	l := &FileLogger{
 		valid: true,
 		dir:   cfg.Dir,
 		std:   cfg.Std,
@@ -81,7 +81,7 @@ func NewFile(cfg *FileConfig) (*File, error) {
 	return l, nil
 }
 
-type File struct {
+type FileLogger struct {
 	mux   sync.Mutex
 	exit  chan struct{}
 	dir   string
@@ -98,13 +98,14 @@ type File struct {
 	timer *time.Timer
 }
 
-func (this *File) Print(l Level, d int, s string) {
+func (this *FileLogger) Print(l Level, d int, s string) {
 	this.mux.Lock()
 	if !this.valid {
 		os.Stderr.WriteString("file has been closed")
 		this.mux.Unlock()
 		return
 	}
+
 	if l >= this.level {
 		Print(&this.line, l, this.stack, d+1, s)
 		if this.std {
@@ -112,17 +113,25 @@ func (this *File) Print(l Level, d int, s string) {
 		}
 		io.Copy(&this.data, &this.line)
 		if this.data.Len() >= this.size {
-			this.save()
+			this.closeFile()
+			this.newFile()
 		}
 	}
 	this.mux.Unlock()
 }
 
-func (this *File) Printf(l Level, d int, f string, a ...interface{}) {
+func (this *FileLogger) Printf(l Level, d int, f string, a ...interface{}) {
 	this.Print(l, d+1, fmt.Sprintf(f, a...))
 }
 
-func (this *File) Close() error {
+func (this *FileLogger) Recover(r interface{}) bool {
+	this.mux.Lock()
+	o := Recover(&this.line, r)
+	this.mux.Unlock()
+	return o
+}
+
+func (this *FileLogger) Close() error {
 	this.mux.Lock()
 	if !this.valid {
 		this.mux.Unlock()
@@ -131,71 +140,15 @@ func (this *File) Close() error {
 	this.valid = false
 	this.mux.Unlock()
 
+	this.timer.Reset(0)
+	this.closeFile()
+
 	<-this.exit
 
 	return nil
 }
 
-func (this *File) save() {
-}
-
-func (this *File) new() {
-}
-
-func (this *File) close() {
-	if nil != this.file {
-		this.file.Write(this.data.Bytes())
-		this.file.Close()
-		this.file = nil
-	}
-}
-
-func (this *File) loop() {
-	defer func() {
-		recover()
-		this.timer.Stop()
-		close(this.exit)
-	}()
-	for this.valid {
-		<-this.timer.C
-		this.mux.Lock()
-		if nil == this.file {
-			this.newFile()
-		}
-		if this.data.Len() > 0 {
-			_, e := this.file.Write(this.data.Bytes())
-			if nil == e {
-				this.data.Reset()
-				f, e := this.file.Stat()
-				if nil == e {
-					if int(f.Size()) >= this.size {
-						this.file.Close()
-						this.newFile()
-					}
-				} else {
-					this.file.Close()
-					this.newFile()
-				}
-			} else {
-				this.newFile()
-				_, e = this.file.Write(this.data.Bytes())
-				if nil != e {
-					this.file.Close()
-					this.file = nil
-					if this.data.Len() >= this.size {
-						this.data.Reset()
-					}
-				} else {
-					this.data.Reset()
-				}
-			}
-		}
-		this.mux.Unlock()
-		this.timer.Reset(this.dur)
-	}
-}
-
-func (this *File) newFile() {
+func (this *FileLogger) newFile() {
 	now := time.Now()
 	dir := filepath.Join(this.dir, now.Format(dirFormat))
 	e := os.MkdirAll(dir, os.ModePerm)
@@ -217,12 +170,9 @@ func (this *File) newFile() {
 		return
 	}
 	count := len(fs)
-	if count <= this.day {
-		return
-	}
+	now = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	for count > this.day {
-		mt := time.Now()
-		mt = time.Date(mt.Year(), mt.Month(), mt.Day(), 0, 0, 0, 0, time.Local)
+		mt := now
 		mi := -1
 		for i := 0; i < len(fs); i++ {
 			t, e := time.Parse(dirFormat, fs[i].Name())
@@ -234,11 +184,13 @@ func (this *File) newFile() {
 				}
 				continue
 			}
+
 			if t.Sub(mt) < 0 {
 				mt = t
 				mi = i
 			}
 		}
+
 		if mi >= 0 {
 			count--
 			e = os.RemoveAll(filepath.Join(this.dir, fs[mi].Name()))
@@ -246,5 +198,61 @@ func (this *File) newFile() {
 				os.Stderr.WriteString(e.Error())
 			}
 		}
+	}
+}
+
+func (this *FileLogger) closeFile() {
+	if nil != this.file {
+		io.Copy(this.file, &this.data)
+		this.file.Close()
+		this.file = nil
+	}
+}
+
+func (this *FileLogger) loop() {
+	defer func() {
+		recover()
+		this.timer.Stop()
+		close(this.exit)
+	}()
+
+	for this.valid {
+		<-this.timer.C
+		this.mux.Lock()
+		if this.data.Len() > 0 {
+			if nil == this.file {
+				this.newFile()
+			}
+			_, e := this.file.Write(this.data.Bytes())
+			if nil == e {
+				this.data.Reset()
+				f, e := this.file.Stat()
+				if nil == e {
+					if int(f.Size()) >= this.size {
+						this.file.Close()
+						this.newFile()
+					}
+				} else {
+					os.Stderr.WriteString(e.Error())
+					this.file.Close()
+					this.newFile()
+				}
+			} else {
+				os.Stderr.WriteString(e.Error())
+				this.newFile()
+				_, e = this.file.Write(this.data.Bytes())
+				if nil != e {
+					this.file.Close()
+					this.file = nil
+					if this.data.Len() >= this.size {
+						this.data.Reset()
+					}
+				} else {
+					this.data.Reset()
+				}
+			}
+		}
+		this.mux.Unlock()
+		this.timer.Reset(this.dur)
 	}
 }

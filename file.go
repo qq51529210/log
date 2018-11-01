@@ -49,22 +49,12 @@ func NewFileLogger(cfg *FileLoggerConfig) (*FileLogger, error) {
 		day:   common.MaxInt(cfg.Day, 1),
 		size:  common.MaxInt(int(size), MinFileSize),
 		dur:   common.MaxDuration(time.Duration(cfg.Duration)*time.Millisecond, MinDuration),
+		level: ParseLevel(strings.ToLower(cfg.Level)),
 		stack: cfg.Stack,
 	}
 
 	if l.dir == "" {
 		l.dir = "./"
-	}
-
-	switch strings.ToLower(cfg.Level) {
-	case "info":
-		l.level = LevelInfo
-	case "warn":
-		l.level = LevelWarn
-	case "error":
-		l.level = LevelError
-	default:
-		l.level = LevelDebug
 	}
 
 	l.timer = time.NewTimer(l.dur)
@@ -138,6 +128,12 @@ func (this *FileLogger) Close() error {
 	<-this.exit
 
 	return nil
+}
+
+func (this *FileLogger) SetLevel(l Level) {
+	this.mux.Lock()
+	this.level = l
+	this.mux.Unlock()
 }
 
 func (this *FileLogger) newFile() {

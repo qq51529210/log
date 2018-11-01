@@ -32,13 +32,18 @@ var (
 	newline                = []byte("\n")
 	space                  = []byte(" ")
 	startHeader            = []byte("[")
-	endHeader              = []byte("]: ")
-	stackArrow             = []byte("<-")
+	endHeader              = []byte("] ")
+	colon                  = []byte(":")
 	DateSeparator     byte = '-'
 	TimeSeparator     byte = ':'
 	DateTimeSeparator byte = ' '
 	NanoSecSeparator  byte = '.'
+	stdLogger              = NewStdLogger(LevelDebug, true)
 )
+
+func DefaultStdLogger() Logger {
+	return stdLogger
+}
 
 type panicInfo struct {
 	f string
@@ -138,6 +143,19 @@ func getStack() [][]byte {
 	return unknownStackLine
 }
 
+func ParseLevel(s string) Level {
+	switch s {
+	case "info":
+		return LevelInfo
+	case "warn":
+		return LevelWarn
+	case "error":
+		return LevelError
+	default:
+		return LevelDebug
+	}
+}
+
 func Print(w io.Writer, l Level, s bool, d int, i string) {
 	w.Write(startHeader)
 	printTimeAndLevel(w, l)
@@ -198,18 +216,13 @@ func printTimeAndLevel(w io.Writer, l Level) {
 func printFileLine(w io.Writer, s *string, l int) {
 	w.Write(space)
 	w.Write(unsafeBytesFromString(s))
-	var buf [21]byte
+	var buf [22]byte
 	buf[0] = ':'
 	b := buf[:]
 	n := formatInteger(b[1:], l)
-	w.Write(b[:n+1])
-}
-
-func printInt(b []byte, l int) int {
-	b[0] = ':'
-	n := formatInteger(b[1:], l)
 	n++
-	return n
+	b[n] = ':'
+	w.Write(b[:n+1])
 }
 
 func Recover(w io.Writer, r interface{}) bool {
@@ -230,10 +243,12 @@ func Recover(w io.Writer, r interface{}) bool {
 		stacks := getStack()
 		if len(stacks) > 0 {
 			w.Write(stacks[0])
+			w.Write(colon)
 		}
 		for i := 1; i < len(stacks); i++ {
-			w.Write(stackArrow)
+			w.Write(space)
 			w.Write(stacks[i])
+			w.Write(colon)
 		}
 		w.Write(endHeader)
 		text := fmt.Sprint(r)
@@ -256,19 +271,25 @@ type Logger interface {
 	Print(l Level, d int, s string)
 	Printf(l Level, d int, f string, a ...interface{})
 	Recover(r interface{}) bool
+	SetLevel(l Level)
 	io.Closer
 }
 
 type StdLogger struct {
 	stack bool
+	level Level
 }
 
 func (this *StdLogger) Print(l Level, d int, s string) {
-	Print(os.Stderr, l, this.stack, d+1, s)
+	if l >= this.level {
+		Print(os.Stderr, l, this.stack, d+1, s)
+	}
 }
 
 func (this *StdLogger) Printf(l Level, d int, f string, a ...interface{}) {
-	Printf(os.Stderr, l, this.stack, d+1, f, a...)
+	if l >= this.level {
+		Printf(os.Stderr, l, this.stack, d+1, f, a...)
+	}
 }
 
 func (this *StdLogger) Recover(r interface{}) bool {
@@ -279,6 +300,10 @@ func (this *StdLogger) Close() error {
 	return nil
 }
 
-func NewStdLogger(stack bool) *StdLogger {
-	return &StdLogger{stack: stack}
+func (this *StdLogger) SetLevel(l Level) {
+	this.level = l
+}
+
+func NewStdLogger(level Level, stack bool) *StdLogger {
+	return &StdLogger{level: level, stack: stack}
 }

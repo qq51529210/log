@@ -2,7 +2,6 @@ package log
 
 import (
 	"testing"
-	"runtime/debug"
 )
 
 func f0(logger Logger) {
@@ -39,17 +38,16 @@ func f5(logger Logger) {
 func f6(logger Logger) {
 	defer func() {
 		logger.Recover(recover())
-		logger.Print(LevelDebug, 0, string(debug.Stack()))
 	}()
 	f0(logger)
 	panic("go panic")
 }
 
 func TestLog(t *testing.T) {
-	l1 := NewStdLogger(true)
+	l1 := NewStdLogger(LevelDebug,true)
 	f5(l1)
 	f6(l1)
-	l2 := NewStdLogger(false)
+	l2 := NewStdLogger(LevelDebug,false)
 	f5(l2)
 	f6(l2)
 }

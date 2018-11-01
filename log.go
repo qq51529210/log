@@ -6,7 +6,6 @@ package log
 */
 
 import (
-	"strings"
 	"time"
 	"unsafe"
 	"reflect"
@@ -25,22 +24,16 @@ const (
 	LevelWarn
 	LevelError
 	_LevelPanic
-	_LevelStack
-)
-
-type StackLine int
-
-const (
-	StackLineNil  StackLine = iota
-	StackLineFile
-	StackLinePath
 )
 
 var (
-	unknownFile            = []byte("???")
+	unknownFile            = "???"
 	unknownStackLine       = [][]byte{[]byte("???:-1")}
 	newline                = []byte("\n")
 	space                  = []byte(" ")
+	startHeader            = []byte("[")
+	endHeader              = []byte("]: ")
+	stackArrow             = []byte("<-")
 	DateSeparator     byte = '-'
 	TimeSeparator     byte = ':'
 	DateTimeSeparator byte = ' '
@@ -50,8 +43,7 @@ var (
 type panicInfo struct {
 	f string
 	l int
-	e error
-	t time.Time
+	a interface{}
 }
 
 func formatAlignInteger(b []byte, i int) {
@@ -146,46 +138,30 @@ func getStack() [][]byte {
 	return unknownStackLine
 }
 
-func Print(w io.Writer, l Level, s StackLine, d int, i string) {
-	t := time.Now()
-	var buf [32]byte
-	b := buf[:]
-	printTimeAndLevel(b, &t, l)
-	w.Write(b)
-	switch s {
-	case StackLineFile:
+func Print(w io.Writer, l Level, s bool, d int, i string) {
+	w.Write(startHeader)
+	printTimeAndLevel(w, l)
+	if s {
 		_, f, l, o := runtime.Caller(d + 1)
 		if !o {
-			w.Write(unknownFile)
-			w.Write(b[:printInt(b, 0)])
+			printFileLine(w, &unknownFile, 0)
 		} else {
-			n := strings.LastIndex(f, "/")
-			if n < 0 {
-				break
-			}
-			w.Write(unsafeBytesFromString(&f)[n:])
-			w.Write(b[:printInt(b, l)])
+			printFileLine(w, &f, l)
 		}
-	case StackLinePath:
-		_, f, l, o := runtime.Caller(d + 1)
-		if !o {
-			w.Write(unknownFile)
-			w.Write(b[:printInt(b, 0)])
-		} else {
-			w.Write(unsafeBytesFromString(&f))
-			w.Write(b[:printInt(b, l)])
-		}
-	default:
 	}
+	w.Write(endHeader)
 	w.Write(unsafeBytesFromString(&i))
 	w.Write(newline)
 }
 
-func Printf(w io.Writer, l Level, s StackLine, d int, f string, a ... interface{}) {
+func Printf(w io.Writer, l Level, s bool, d int, f string, a ... interface{}) {
 	Print(w, l, s, d+1, fmt.Sprintf(f, a...))
 }
 
-func printTimeAndLevel(b []byte, t *time.Time, l Level) {
+func printTimeAndLevel(w io.Writer, l Level) {
+	t := time.Now()
+	var buf [31]byte
+	b := buf[:]
 	year, month, day := t.Date()
 	formatAlignInteger(b[0:4], year)
 	b[4] = DateSeparator
@@ -213,19 +189,25 @@ func printTimeAndLevel(b []byte, t *time.Time, l Level) {
 		b[30] = 'e'
 	case _LevelPanic:
 		b[30] = 'p'
-	case _LevelStack:
-		b[30] = 's'
 	default:
 		b[30] = 'n'
 	}
-	b[31] = ' '
+	w.Write(b)
+}
+
+func printFileLine(w io.Writer, s *string, l int) {
+	w.Write(space)
+	w.Write(unsafeBytesFromString(s))
+	var buf [21]byte
+	buf[0] = ':'
+	b := buf[:]
+	n := formatInteger(b[1:], l)
+	w.Write(b[:n+1])
 }
 
 func printInt(b []byte, l int) int {
 	b[0] = ':'
 	n := formatInteger(b[1:], l)
-	n++
-	b[n] = ' '
 	n++
 	return n
 }
@@ -234,44 +216,51 @@ func Recover(w io.Writer, r interface{}) bool {
 	if nil == r {
 		return false
 	}
-	var buf [32]byte
-	b := buf[:]
+	w.Write(startHeader)
+	printTimeAndLevel(w, _LevelPanic)
 	switch r.(type) {
 	case *panicInfo:
 		info := r.(*panicInfo)
-		printTimeAndLevel(b, &info.t, _LevelPanic)
-		w.Write(unsafeBytesFromString(&info.f))
-		w.Write(b[:printInt(b, info.l)])
-		text := fmt.Sprint(info.e.Error())
+		printFileLine(w, &info.f, info.l)
+		w.Write(endHeader)
+		text := fmt.Sprint(info.a)
 		w.Write(unsafeBytesFromString(&text))
 	default:
-		now := time.Now()
-		printTimeAndLevel(b, &now, _LevelStack)
+		w.Write(space)
 		stacks := getStack()
 		if len(stacks) > 0 {
 			w.Write(stacks[0])
-			w.Write(space)
 		}
+		for i := 1; i < len(stacks); i++ {
+			w.Write(stackArrow)
+			w.Write(stacks[i])
+		}
+		w.Write(endHeader)
 		text := fmt.Sprint(r)
 		w.Write(unsafeBytesFromString(&text))
-		w.Write(space)
-		for i := 1; i < len(stacks); i++ {
-			w.Write(stacks[i])
-			w.Write(space)
-		}
 	}
 	w.Write(newline)
 	return true
+}
+
+func Panic(a interface{}) {
+	if nil != a {
+		ee := new(panicInfo)
+		ee.a = a
+		_, ee.f, ee.l, _ = runtime.Caller(1)
+		panic(ee)
+	}
 }
 
 type Logger interface {
 	Print(l Level, d int, s string)
 	Printf(l Level, d int, f string, a ...interface{})
 	Recover(r interface{}) bool
+	io.Closer
 }
 
 type StdLogger struct {
-	stack StackLine
+	stack bool
 }
 
 func (this *StdLogger) Print(l Level, d int, s string) {
@@ -286,6 +275,10 @@ func (this *StdLogger) Recover(r interface{}) bool {
 	return Recover(os.Stderr, r)
 }
 
-func NewStdLogger(stack StackLine) *StdLogger {
+func (this *StdLogger) Close() error {
+	return nil
+}
+
+func NewStdLogger(stack bool) *StdLogger {
 	return &StdLogger{stack: stack}
 }

@@ -29,9 +29,9 @@ type FileLoggerConfig struct {
 	Dir      string `json:"dir"`
 	Size     string `json:"size"`
 	Day      int    `json:"day"`
-	Std      bool   `json:"std"`
 	Level    string `json:"level"`
-	Stack    string `json:"stack"`
+	Std      bool   `json:"std"`
+	Stack    bool   `json:"stack"`
 	Duration int    `json:"duration"`
 }
 
@@ -49,19 +49,11 @@ func NewFileLogger(cfg *FileLoggerConfig) (*FileLogger, error) {
 		day:   common.MaxInt(cfg.Day, 1),
 		size:  common.MaxInt(int(size), MinFileSize),
 		dur:   common.MaxDuration(time.Duration(cfg.Duration)*time.Millisecond, MinDuration),
+		stack: cfg.Stack,
 	}
 
 	if l.dir == "" {
 		l.dir = "./"
-	}
-
-	switch strings.ToLower(cfg.Stack) {
-	case "file":
-		l.stack = StackLineFile
-	case "path":
-		l.stack = StackLinePath
-	default:
-		l.stack = StackLineNil
 	}
 
 	switch strings.ToLower(cfg.Level) {
@@ -93,7 +85,7 @@ type FileLogger struct {
 	valid bool
 	file  *os.File
 	level Level
-	stack StackLine
+	stack bool
 	dur   time.Duration
 	timer *time.Timer
 }

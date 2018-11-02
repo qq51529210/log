@@ -267,6 +267,13 @@ func Panic(a interface{}) {
 	}
 }
 
+func Panicf(f string, a ... interface{}) {
+	ee := new(panicInfo)
+	ee.a = fmt.Sprintf(f, a...)
+	_, ee.f, ee.l, _ = runtime.Caller(1)
+	panic(ee)
+}
+
 type Logger interface {
 	Print(l Level, d int, s string)
 	Printf(l Level, d int, f string, a ...interface{})

@@ -123,9 +123,9 @@ func (this *FileLogger) Close() error {
 	this.mux.Unlock()
 
 	this.timer.Reset(0)
-	this.closeFile()
 
 	<-this.exit
+	this.closeFile()
 
 	return nil
 }

@@ -291,13 +291,17 @@ type StdLogger struct {
 
 func (this *StdLogger) Print(l Level, d int, s string) {
 	if l >= this.level {
+		this.mux.Lock()
 		Print(os.Stderr, l, this.stack, d+1, s)
+		this.mux.Unlock()
 	}
 }
 
 func (this *StdLogger) Printf(l Level, d int, f string, a ...interface{}) {
 	if l >= this.level {
+		this.mux.Lock()
 		Printf(os.Stderr, l, this.stack, d+1, f, a...)
+		this.mux.Unlock()
 	}
 }
 

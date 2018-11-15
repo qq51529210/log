@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"bytes"
 	"os"
+	"sync"
 )
 
 type Level int
@@ -283,6 +284,7 @@ type Logger interface {
 }
 
 type StdLogger struct {
+	mux   sync.Mutex
 	stack bool
 	level Level
 }
@@ -300,6 +302,8 @@ func (this *StdLogger) Printf(l Level, d int, f string, a ...interface{}) {
 }
 
 func (this *StdLogger) Recover(r interface{}) bool {
+	this.mux.Lock()
+	defer this.mux.Unlock()
 	return Recover(os.Stderr, r)
 }
 

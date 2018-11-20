@@ -52,6 +52,10 @@ type panicInfo struct {
 	a interface{}
 }
 
+func (this *panicInfo) String() string {
+	return fmt.Sprint(this.a)
+}
+
 func formatAlignInteger(b []byte, i int) {
 	n := len(b) - 1
 	j := i / 10

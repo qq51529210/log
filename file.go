@@ -30,9 +30,9 @@ type FileLoggerConfig struct {
 	Size     string `json:"size"`
 	Day      int    `json:"day"`
 	Level    string `json:"level"`
+	Duration string `json:"duration"`
 	Std      bool   `json:"std"`
 	Stack    bool   `json:"stack"`
-	Duration int    `json:"duration"`
 }
 
 func NewFileLogger(cfg *FileLoggerConfig) (*FileLogger, error) {
@@ -40,7 +40,10 @@ func NewFileLogger(cfg *FileLoggerConfig) (*FileLogger, error) {
 	if nil != e {
 		return nil, e
 	}
-
+	dur, e := time.ParseDuration(cfg.Duration)
+	if nil != e {
+		return nil, e
+	}
 	l := &FileLogger{
 		valid: true,
 		dir:   cfg.Dir,
@@ -48,7 +51,7 @@ func NewFileLogger(cfg *FileLoggerConfig) (*FileLogger, error) {
 		exit:  make(chan struct{}),
 		day:   common.MaxInt(cfg.Day, 1),
 		size:  common.MaxInt(int(size), MinFileSize),
-		dur:   common.MaxDuration(time.Duration(cfg.Duration)*time.Millisecond, MinDuration),
+		dur:   common.MaxDuration(dur, MinDuration),
 		level: ParseLevel(strings.ToLower(cfg.Level)),
 		stack: cfg.Stack,
 	}

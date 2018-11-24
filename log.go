@@ -7,8 +7,6 @@ package log
 
 import (
 	"time"
-	"unsafe"
-	"reflect"
 	"io"
 	"fmt"
 	"runtime"
@@ -96,15 +94,15 @@ func formatInteger(b []byte, i int) int {
 	return n
 }
 
-func unsafeBytesFromString(s *string) []byte {
-	ss := (*reflect.StringHeader)(unsafe.Pointer(s))
-	bb := reflect.SliceHeader{
-		Data: ss.Data,
-		Len:  ss.Len,
-		Cap:  ss.Len,
-	}
-	return *(*[]byte)(unsafe.Pointer(&bb))
-}
+//func unsafeBytesFromString(s *string) []byte {
+//	ss := (*reflect.StringHeader)(unsafe.Pointer(s))
+//	bb := reflect.SliceHeader{
+//		Data: ss.Data,
+//		Len:  ss.Len,
+//		Cap:  ss.Len,
+//	}
+//	return *(*[]byte)(unsafe.Pointer(&bb))
+//}
 
 func getStack() [][]byte {
 	lines := make([][]byte, 0)
@@ -173,7 +171,7 @@ func Print(w io.Writer, l Level, s bool, d int, i string) {
 		}
 	}
 	w.Write(endHeader)
-	w.Write(unsafeBytesFromString(&i))
+	io.WriteString(w, i)
 	w.Write(newline)
 }
 
@@ -220,7 +218,7 @@ func printTimeAndLevel(w io.Writer, l Level) {
 
 func printFileLine(w io.Writer, s *string, l int) {
 	w.Write(space)
-	w.Write(unsafeBytesFromString(s))
+	io.WriteString(w, *s)
 	var buf [22]byte
 	buf[0] = ':'
 	b := buf[:]
@@ -242,7 +240,7 @@ func Recover(w io.Writer, r interface{}) bool {
 		printFileLine(w, &info.f, info.l)
 		w.Write(endHeader)
 		text := fmt.Sprint(info.a)
-		w.Write(unsafeBytesFromString(&text))
+		io.WriteString(w, text)
 	default:
 		w.Write(space)
 		stacks := getStack()
@@ -257,7 +255,7 @@ func Recover(w io.Writer, r interface{}) bool {
 		}
 		w.Write(endHeader)
 		text := fmt.Sprint(r)
-		w.Write(unsafeBytesFromString(&text))
+		io.WriteString(w, text)
 	}
 	w.Write(newline)
 	return true

@@ -94,16 +94,6 @@ func formatInteger(b []byte, i int) int {
 	return n
 }
 
-//func unsafeBytesFromString(s *string) []byte {
-//	ss := (*reflect.StringHeader)(unsafe.Pointer(s))
-//	bb := reflect.SliceHeader{
-//		Data: ss.Data,
-//		Len:  ss.Len,
-//		Cap:  ss.Len,
-//	}
-//	return *(*[]byte)(unsafe.Pointer(&bb))
-//}
-
 func getStack() [][]byte {
 	lines := make([][]byte, 0)
 	stack := make([]byte, 128)

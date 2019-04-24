@@ -19,6 +19,14 @@ const (
 	MaxIntegerLength       = 20
 )
 
+type FileLine byte
+
+const (
+	FileLineDisable  FileLine = iota
+	FileLineFullPath
+	FileLineName
+)
+
 var (
 	fmtPool                = sync.Pool{}
 	SpaceSeparator    byte = ' '
@@ -26,7 +34,7 @@ var (
 	TimeSeparator     byte = ':'
 	NanoSecSeparator  byte = '.'
 	FileLineSeparator byte = ':'
-	endLine                = []byte("\n")
+	unknownFileLine        = []byte("???:-1:")
 )
 
 func init() {
@@ -42,7 +50,6 @@ type Log struct {
 
 func (this *Log) Reset() {
 	this.n = 0
-	this.grow(1024)
 }
 
 func (this *Log) grow(n int) {
@@ -52,7 +59,7 @@ func (this *Log) grow(n int) {
 	}
 }
 
-func (this *Log) IntegerAlignRight(value, length int) {
+func (this *Log) integerAlignRight(value, length int) {
 	max := this.n + length
 	// 值是倒转的
 	m := this.n
@@ -85,7 +92,7 @@ func (this *Log) IntegerAlignRight(value, length int) {
 	}
 }
 
-func (this *Log) IntegerAlignLeft(value, length int) {
+func (this *Log) integerAlignLeft(value, length int) {
 	max := this.n + length
 	// 值是倒转的
 	m := this.n
@@ -118,7 +125,7 @@ func (this *Log) IntegerAlignLeft(value, length int) {
 	}
 }
 
-func (this *Log) Integer(n int) {
+func (this *Log) integer(n int) {
 	m := this.n
 	for n > 0 {
 		this.b[m] = byte('0' + n%10)
@@ -139,41 +146,41 @@ func (this *Log) Integer(n int) {
 }
 
 func (this *Log) DateTime(nsec int) {
+	this.grow(34)
+	// 2019-04-25 00:25:43:25.256131000_
 	date_time := time.Now()
 	year, month, day := date_time.Date()
 	hour, minute, second := date_time.Clock()
 	// fmt
-	this.IntegerAlignLeft(year, 4)
+	this.integerAlignLeft(year, 4)
 	this.b[this.n] = DateSeparator
 	this.n++
-	this.IntegerAlignLeft(int(month), 2)
+	this.integerAlignLeft(int(month), 2)
 	this.b[this.n] = DateSeparator
 	this.n++
-	this.IntegerAlignLeft(day, 2)
+	this.integerAlignLeft(day, 2)
 	this.b[this.n] = SpaceSeparator
 	this.n++
-	this.IntegerAlignLeft(hour, 2)
+	this.integerAlignLeft(hour, 2)
 	this.b[this.n] = TimeSeparator
 	this.n++
-	this.IntegerAlignLeft(minute, 2)
+	this.integerAlignLeft(minute, 2)
 	this.b[this.n] = TimeSeparator
 	this.n++
-	this.IntegerAlignLeft(second, 2)
+	this.integerAlignLeft(second, 2)
 	this.b[this.n] = TimeSeparator
 	this.n++
-	this.IntegerAlignLeft(day, 2)
+	this.integerAlignLeft(day, 2)
 	if nsec > 0 {
 		if nsec > 9 {
 			nsec = 9
 		}
 		this.b[this.n] = NanoSecSeparator
 		this.n++
-		this.IntegerAlignRight(date_time.Nanosecond(), nsec)
+		this.integerAlignRight(date_time.Nanosecond(), nsec)
 	}
-}
-
-func (this *Log) Separator(c byte) {
-	this.Byte(c)
+	this.b[this.n] = SpaceSeparator
+	this.n++
 }
 
 func (this *Log) Byte(c byte) {
@@ -182,7 +189,8 @@ func (this *Log) Byte(c byte) {
 }
 
 func (this *Log) Level(level Level) {
-	this.Separator(byte(level))
+	this.b[this.n] = SpaceSeparator
+	this.n++
 }
 
 func (this *Log) FilePathLine(skip int, full bool) {
@@ -201,29 +209,20 @@ func (this *Log) FilePathLine(skip int, full bool) {
 			this.filePathLine(f, l)
 		}
 	}
+	this.b[this.n] = SpaceSeparator
+	this.n++
 }
 
 func (this *Log) unknownFilePathLine() {
-	for i := 0; i < 3; i++ {
-		this.b[this.n] = '?'
-		this.n++
-	}
-	this.b[this.n] = ':'
-	this.n++
-	this.b[this.n] = '-'
-	this.n++
-	this.b[this.n] = '1'
-	this.n++
-	this.b[this.n] = ':'
-	this.n++
-
+	this.grow(len(unknownFileLine) + 1)
+	this.n += copy(this.b[:this.n], unknownFileLine)
 }
 
 func (this *Log) filePathLine(f string, l int) {
-	this.grow(len(f))
+	this.grow(len(f) + MaxIntegerLength + 1)
 	this.n += copy(this.b[this.n:], f)
-	this.Separator(FileLineSeparator)
-	this.Integer(l)
+	this.Byte(FileLineSeparator)
+	this.integer(l)
 }
 
 func (this *Log) String(s string) {
@@ -241,29 +240,26 @@ func Print(writer io.Writer, level Level, skip int, full bool, log string) (int,
 	f := fmtPool.Get().(*Log)
 	f.Reset()
 	f.DateTime(6)
-	f.Separator(' ')
 	f.Level(level)
-	f.Separator(' ')
 	f.FilePathLine(skip+1, full)
-	f.Separator(' ')
 	f.String(log)
-	f.Separator('\n')
+	f.grow(1)
+	f.Byte('\n')
 	n, e := writer.Write(f.b[:f.n])
 	fmtPool.Put(f)
 	return n, e
 }
 
 func Printf(writer io.Writer, level Level, skip int, full bool, format string, a ... interface{}) (int, error) {
+	return Print(writer, level, skip+1, full, fmt.Sprintf(format, a...))
 	f := fmtPool.Get().(*Log)
 	f.Reset()
 	f.DateTime(6)
-	f.Separator(' ')
 	f.Level(level)
-	f.Separator(' ')
 	f.FilePathLine(skip+1, full)
-	f.Separator(' ')
 	fmt.Fprintf(f, format, a...)
-	f.Separator('\n')
+	f.grow(1)
+	f.Byte('\n')
 	n, e := writer.Write(f.b[:f.n])
 	fmtPool.Put(f)
 	return n, e
@@ -404,20 +400,20 @@ func Recover(writer io.Writer) {
 //	var buf [31]byte
 //	b := buf[:]
 //	year, month, day := t.Date()
-//	formatAlignInteger(b[0:4], year)
+//	formatAligninteger(b[0:4], year)
 //	b[4] = DateSeparator
-//	formatAlignInteger(b[5:7], int(month))
+//	formatAligninteger(b[5:7], int(month))
 //	b[7] = DateSeparator
-//	formatAlignInteger(b[8:10], day)
+//	formatAligninteger(b[8:10], day)
 //	b[10] = DateTimeSeparator
 //	hour, min, sec := t.Clock()
-//	formatAlignInteger(b[11:13], hour)
+//	formatAligninteger(b[11:13], hour)
 //	b[13] = TimeSeparator
-//	formatAlignInteger(b[14:16], min)
+//	formatAligninteger(b[14:16], min)
 //	b[16] = TimeSeparator
-//	formatAlignInteger(b[17:19], sec)
+//	formatAligninteger(b[17:19], sec)
 //	b[19] = NanoSecSeparator
-//	formatAlignInteger(b[20:29], t.Nanosecond())
+//	formatAligninteger(b[20:29], t.Nanosecond())
 //	b[29] = ' '
 //	switch l {
 //	case LevelDebug:
@@ -442,7 +438,7 @@ func Recover(writer io.Writer) {
 //	var buf [22]byte
 //	buf[0] = ':'
 //	b := buf[:]
-//	n := formatInteger(b[1:], l)
+//	n := formatinteger(b[1:], l)
 //	n++
 //	b[n] = ':'
 //	w.Write(b[:n+1])

@@ -42,6 +42,7 @@ type Log struct {
 
 func (this *Log) Reset() {
 	this.n = 0
+	this.grow(1024)
 }
 
 func (this *Log) grow(n int) {
@@ -52,11 +53,6 @@ func (this *Log) grow(n int) {
 }
 
 func (this *Log) IntegerAlignRight(value, length int) {
-	if length > MaxIntegerLength {
-		this.grow(length)
-	} else {
-		this.grow(MaxIntegerLength)
-	}
 	max := this.n + length
 	// 值是倒转的
 	m := this.n
@@ -90,11 +86,6 @@ func (this *Log) IntegerAlignRight(value, length int) {
 }
 
 func (this *Log) IntegerAlignLeft(value, length int) {
-	if length > MaxIntegerLength {
-		this.grow(length)
-	} else {
-		this.grow(MaxIntegerLength)
-	}
 	max := this.n + length
 	// 值是倒转的
 	m := this.n
@@ -128,7 +119,6 @@ func (this *Log) IntegerAlignLeft(value, length int) {
 }
 
 func (this *Log) Integer(n int) {
-	this.grow(MaxIntegerLength)
 	m := this.n
 	for n > 0 {
 		this.b[m] = byte('0' + n%10)
@@ -187,7 +177,6 @@ func (this *Log) Separator(c byte) {
 }
 
 func (this *Log) Byte(c byte) {
-	this.grow(1)
 	this.b[this.n] = c
 	this.n++
 }
@@ -215,7 +204,6 @@ func (this *Log) FilePathLine(skip int, full bool) {
 }
 
 func (this *Log) unknownFilePathLine() {
-	this.grow(7)
 	for i := 0; i < 3; i++ {
 		this.b[this.n] = '?'
 		this.n++

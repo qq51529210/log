@@ -1,316 +1,563 @@
 package log
 
-/*
-1.I wanna print personal date format like 2018-01-01 00:00:00
-2.I wanna print personal panic stack file line
-*/
-
 import (
-	"time"
-	"io"
 	"fmt"
+	"io"
 	"runtime"
-	"bytes"
-	"os"
 	"sync"
+	"time"
 )
 
-type Level int
+type Level byte
 
 const (
-	LevelDebug  Level = iota
-	LevelInfo
-	LevelWarn
-	LevelError
-	_LevelPanic
+	LevelDebug       Level = 'd'
+	LevelInfo        Level = 'i'
+	LevelWarn        Level = 'w'
+	LevelError       Level = 'e'
+	LevelPanic       Level = 'p'
+	MaxIntegerLength       = 20
 )
 
 var (
-	unknownFile            = "???"
-	unknownStackLine       = [][]byte{[]byte("???:-1")}
-	newline                = []byte("\n")
-	space                  = []byte(" ")
-	startHeader            = []byte("[")
-	endHeader              = []byte("] ")
-	colon                  = []byte(":")
+	fmtPool                = sync.Pool{}
+	SpaceSeparator    byte = ' '
 	DateSeparator     byte = '-'
 	TimeSeparator     byte = ':'
-	DateTimeSeparator byte = ' '
 	NanoSecSeparator  byte = '.'
-	stdLogger              = NewStdLogger(LevelDebug, true)
+	FileLineSeparator byte = ':'
+	endLine                = []byte("\n")
 )
 
-func DefaultStdLogger() Logger {
-	return stdLogger
-}
-
-type panicInfo struct {
-	f string
-	l int
-	a interface{}
-}
-
-func (this *panicInfo) String() string {
-	return fmt.Sprint(this.a)
-}
-
-func formatAlignInteger(b []byte, i int) {
-	n := len(b) - 1
-	j := i / 10
-	for i >= 10 {
-		b[n] = byte('0' + i - j*10)
-		n--
-		i = j
-		j = i / 10
+func init() {
+	fmtPool.New = func() interface{} {
+		return &Log{}
 	}
-	if n >= 0 {
-		b[n] = byte('0' + i)
-		n--
-		for n >= 0 {
-			b[n] = byte('0')
-			n--
+}
+
+type Log struct {
+	b []byte
+	n int
+}
+
+func (this *Log) Reset() {
+	this.n = 0
+}
+
+func (this *Log) grow(n int) {
+	left := len(this.b) - this.n
+	if left < n {
+		this.b = append(this.b, make([]byte, n-left)...)
+	}
+}
+
+func (this *Log) IntegerAlignRight(value, length int) {
+	if length > MaxIntegerLength {
+		this.grow(length)
+	} else {
+		this.grow(MaxIntegerLength)
+	}
+	max := this.n + length
+	// 值是倒转的
+	m := this.n
+	for value > 0 {
+		this.b[m] = byte('0' + value%10)
+		value /= 10
+		m++
+		length--
+	}
+	// 先反转
+	c := byte(0)
+	i := this.n
+	this.n = m
+	m--
+	for i < m {
+		c = this.b[i]
+		this.b[i] = this.b[m]
+		this.b[m] = c
+		m--
+		i++
+	}
+	// 再后面补0
+	for length > 0 {
+		this.b[m] = '0'
+		m++
+		length--
+	}
+	if this.n > max {
+		this.n = max
+	}
+}
+
+func (this *Log) IntegerAlignLeft(value, length int) {
+	if length > MaxIntegerLength {
+		this.grow(length)
+	} else {
+		this.grow(MaxIntegerLength)
+	}
+	max := this.n + length
+	// 值是倒转的
+	m := this.n
+	for value > 0 {
+		this.b[m] = byte('0' + value%10)
+		value /= 10
+		m++
+		length--
+	}
+	// 继续在后面补0
+	for length > 0 {
+		this.b[m] = '0'
+		m++
+		length--
+	}
+	// 反转
+	c := byte(0)
+	i := this.n
+	this.n = m
+	m--
+	for i < m {
+		c = this.b[i]
+		this.b[i] = this.b[m]
+		this.b[m] = c
+		m--
+		i++
+	}
+	if this.n > max {
+		this.n = max
+	}
+}
+
+func (this *Log) Integer(n int) {
+	this.grow(MaxIntegerLength)
+	m := this.n
+	for n > 0 {
+		this.b[m] = byte('0' + n%10)
+		n /= 10
+		m++
+	}
+	c := byte(0)
+	i := this.n
+	this.n = m
+	m--
+	for i < m {
+		c = this.b[i]
+		this.b[i] = this.b[m]
+		this.b[m] = c
+		m--
+		i++
+	}
+}
+
+func (this *Log) DateTime(nsec int) {
+	date_time := time.Now()
+	year, month, day := date_time.Date()
+	hour, minute, second := date_time.Clock()
+	// fmt
+	this.IntegerAlignLeft(year, 4)
+	this.b[this.n] = DateSeparator
+	this.n++
+	this.IntegerAlignLeft(int(month), 2)
+	this.b[this.n] = DateSeparator
+	this.n++
+	this.IntegerAlignLeft(day, 2)
+	this.b[this.n] = SpaceSeparator
+	this.n++
+	this.IntegerAlignLeft(hour, 2)
+	this.b[this.n] = TimeSeparator
+	this.n++
+	this.IntegerAlignLeft(minute, 2)
+	this.b[this.n] = TimeSeparator
+	this.n++
+	this.IntegerAlignLeft(second, 2)
+	this.b[this.n] = TimeSeparator
+	this.n++
+	this.IntegerAlignLeft(day, 2)
+	if nsec > 0 {
+		if nsec > 9 {
+			nsec = 9
 		}
+		this.b[this.n] = NanoSecSeparator
+		this.n++
+		this.IntegerAlignRight(date_time.Nanosecond(), nsec)
 	}
 }
 
-func formatInteger(b []byte, i int) int {
-	n := 0
-	for i > 0 {
-		b[n] = byte('0' + i%10)
-		i /= 10
-		n++
-	}
-	k := n - 1
-	m := byte(0)
-	for j := 0; j < n; j++ {
-		m = b[j]
-		b[j] = b[k]
-		b[k] = m
-		k--
-		if j >= k {
-			break
-		}
-	}
-	return n
+func (this *Log) Separator(c byte) {
+	this.Byte(c)
 }
 
-func getStack() [][]byte {
-	lines := make([][]byte, 0)
-	stack := make([]byte, 128)
-	for {
-		n := runtime.Stack(stack, false)
-		if n < len(stack) {
-			stack = stack[:n]
-			break
-		}
-		stack = make([]byte, len(stack)+128)
-	}
-	for len(stack) > 0 {
-		i := bytes.IndexByte(stack, '\n')
-		if i < 0 {
-			return unknownStackLine
-		}
-		line := stack[:i]
-		stack = stack[i+1:]
-		if bytes.Contains(line, []byte("/runtime/panic.go")) {
-			for len(stack) > 0 {
-				i = bytes.IndexByte(stack, '\n')
-				if i < 0 {
-					return unknownStackLine
-				}
-				line = stack[:i]
-				stack = stack[i+1:]
-				if line[0] == '\t' {
-					j := 1
-					for ; j < len(line); j++ {
-						if line[j] == ' ' {
-							break
-						}
-					}
-					lines = append(lines, line[1:j])
+func (this *Log) Byte(c byte) {
+	this.grow(1)
+	this.b[this.n] = c
+	this.n++
+}
+
+func (this *Log) Level(level Level) {
+	this.Separator(byte(level))
+}
+
+func (this *Log) FilePathLine(skip int, full bool) {
+	_, f, l, o := runtime.Caller(skip + 1)
+	if !o {
+		this.unknownFilePathLine()
+	} else {
+		if !full {
+			for i := len(f) - 1; i >= 0; i-- {
+				if f[i] == '/' {
+					this.filePathLine(f[i+1:], l)
+					break
 				}
 			}
-			return lines
-		}
-	}
-	return unknownStackLine
-}
-
-func ParseLevel(s string) Level {
-	switch s {
-	case "info":
-		return LevelInfo
-	case "warn":
-		return LevelWarn
-	case "error":
-		return LevelError
-	default:
-		return LevelDebug
-	}
-}
-
-func Print(w io.Writer, l Level, s bool, d int, i string) {
-	w.Write(startHeader)
-	printTimeAndLevel(w, l)
-	if s {
-		_, f, l, o := runtime.Caller(d + 1)
-		if !o {
-			printFileLine(w, &unknownFile, 0)
 		} else {
-			printFileLine(w, &f, l)
+			this.filePathLine(f, l)
 		}
 	}
-	w.Write(endHeader)
-	io.WriteString(w, i)
-	w.Write(newline)
 }
 
-func Printf(w io.Writer, l Level, s bool, d int, f string, a ... interface{}) {
-	Print(w, l, s, d+1, fmt.Sprintf(f, a...))
-}
-
-func printTimeAndLevel(w io.Writer, l Level) {
-	t := time.Now()
-	var buf [31]byte
-	b := buf[:]
-	year, month, day := t.Date()
-	formatAlignInteger(b[0:4], year)
-	b[4] = DateSeparator
-	formatAlignInteger(b[5:7], int(month))
-	b[7] = DateSeparator
-	formatAlignInteger(b[8:10], day)
-	b[10] = DateTimeSeparator
-	hour, min, sec := t.Clock()
-	formatAlignInteger(b[11:13], hour)
-	b[13] = TimeSeparator
-	formatAlignInteger(b[14:16], min)
-	b[16] = TimeSeparator
-	formatAlignInteger(b[17:19], sec)
-	b[19] = NanoSecSeparator
-	formatAlignInteger(b[20:29], t.Nanosecond())
-	b[29] = ' '
-	switch l {
-	case LevelDebug:
-		b[30] = 'd'
-	case LevelInfo:
-		b[30] = 'i'
-	case LevelWarn:
-		b[30] = 'w'
-	case LevelError:
-		b[30] = 'e'
-	case _LevelPanic:
-		b[30] = 'p'
-	default:
-		b[30] = 'n'
+func (this *Log) unknownFilePathLine() {
+	this.grow(7)
+	for i := 0; i < 3; i++ {
+		this.b[this.n] = '?'
+		this.n++
 	}
-	w.Write(b)
+	this.b[this.n] = ':'
+	this.n++
+	this.b[this.n] = '-'
+	this.n++
+	this.b[this.n] = '1'
+	this.n++
+	this.b[this.n] = ':'
+	this.n++
+
 }
 
-func printFileLine(w io.Writer, s *string, l int) {
-	w.Write(space)
-	io.WriteString(w, *s)
-	var buf [22]byte
-	buf[0] = ':'
-	b := buf[:]
-	n := formatInteger(b[1:], l)
-	n++
-	b[n] = ':'
-	w.Write(b[:n+1])
+func (this *Log) filePathLine(f string, l int) {
+	this.grow(len(f))
+	this.n += copy(this.b[this.n:], f)
+	this.Separator(FileLineSeparator)
+	this.Integer(l)
 }
 
-func Recover(w io.Writer, r interface{}) bool {
-	if nil == r {
-		return false
+func (this *Log) String(s string) {
+	this.grow(len(s))
+	this.n += copy(this.b[this.n:], s)
+}
+
+func (this *Log) Write(b []byte) (int, error) {
+	this.grow(len(b))
+	this.n += copy(this.b[this.n:], b)
+	return len(b), nil
+}
+
+func Print(writer io.Writer, level Level, skip int, full bool, log string) (int, error) {
+	f := fmtPool.Get().(*Log)
+	f.Reset()
+	f.DateTime(6)
+	f.Separator(' ')
+	f.Level(level)
+	f.Separator(' ')
+	f.FilePathLine(skip+1, full)
+	f.Separator(' ')
+	f.String(log)
+	f.Separator('\n')
+	n, e := writer.Write(f.b[:f.n])
+	fmtPool.Put(f)
+	return n, e
+}
+
+func Printf(writer io.Writer, level Level, skip int, full bool, format string, a ... interface{}) (int, error) {
+	f := fmtPool.Get().(*Log)
+	f.Reset()
+	f.DateTime(6)
+	f.Separator(' ')
+	f.Level(level)
+	f.Separator(' ')
+	f.FilePathLine(skip+1, full)
+	f.Separator(' ')
+	fmt.Fprintf(f, format, a...)
+	f.Separator('\n')
+	n, e := writer.Write(f.b[:f.n])
+	fmtPool.Put(f)
+	return n, e
+}
+
+func Recover(writer io.Writer) {
+	re := recover()
+	if re == nil {
+		return
 	}
-	w.Write(startHeader)
-	printTimeAndLevel(w, _LevelPanic)
-	switch r.(type) {
-	case *panicInfo:
-		info := r.(*panicInfo)
-		printFileLine(w, &info.f, info.l)
-		w.Write(endHeader)
-		text := fmt.Sprint(info.a)
-		io.WriteString(w, text)
-	default:
-		w.Write(space)
-		stacks := getStack()
-		if len(stacks) > 0 {
-			w.Write(stacks[0])
-			w.Write(colon)
-		}
-		for i := 1; i < len(stacks); i++ {
-			w.Write(space)
-			w.Write(stacks[i])
-			w.Write(colon)
-		}
-		w.Write(endHeader)
-		text := fmt.Sprint(r)
-		io.WriteString(w, text)
-	}
-	w.Write(newline)
-	return true
+
 }
 
-func Panic(a interface{}) {
-	if nil != a {
-		ee := new(panicInfo)
-		ee.a = a
-		_, ee.f, ee.l, _ = runtime.Caller(1)
-		panic(ee)
-	}
-}
-
-func Panicf(f string, a ... interface{}) {
-	ee := new(panicInfo)
-	ee.a = fmt.Sprintf(f, a...)
-	_, ee.f, ee.l, _ = runtime.Caller(1)
-	panic(ee)
-}
-
-type Logger interface {
-	Print(l Level, d int, s string)
-	Printf(l Level, d int, f string, a ...interface{})
-	Recover(r interface{}) bool
-	SetLevel(l Level)
-	io.Closer
-}
-
-type StdLogger struct {
-	mux   sync.Mutex
-	stack bool
-	level Level
-}
-
-func (this *StdLogger) Print(l Level, d int, s string) {
-	if l >= this.level {
-		this.mux.Lock()
-		Print(os.Stderr, l, this.stack, d+1, s)
-		this.mux.Unlock()
-	}
-}
-
-func (this *StdLogger) Printf(l Level, d int, f string, a ...interface{}) {
-	if l >= this.level {
-		this.mux.Lock()
-		Printf(os.Stderr, l, this.stack, d+1, f, a...)
-		this.mux.Unlock()
-	}
-}
-
-func (this *StdLogger) Recover(r interface{}) bool {
-	this.mux.Lock()
-	defer this.mux.Unlock()
-	return Recover(os.Stderr, r)
-}
-
-func (this *StdLogger) Close() error {
-	return nil
-}
-
-func (this *StdLogger) SetLevel(l Level) {
-	this.level = l
-}
-
-func NewStdLogger(level Level, stack bool) *StdLogger {
-	return &StdLogger{level: level, stack: stack}
-}
+//
+///*
+//1.I wanna print personal date format like 2018-01-01 00:00:00
+//2.I wanna print personal panic stack file line
+//*/
+//
+//import (
+//	"time"
+//	"io"
+//	"fmt"
+//	"runtime"
+//	"bytes"
+//	"os"
+//	"sync"
+//)
+//
+//type Level int
+//
+//var (
+//	unknownFile            = "???"
+//	unknownStackLine       = [][]byte{[]byte("???:-1")}
+//	newline                = []byte("\n")
+//	space                  = []byte(" ")
+//	startHeader            = []byte("[")
+//	endHeader              = []byte("] ")
+//	colon                  = []byte(":")
+//	DateSeparator     byte = '-'
+//	TimeSeparator     byte = ':'
+//	DateTimeSeparator byte = ' '
+//	NanoSecSeparator  byte = '.'
+//	stdLogger              = NewStdLogger(LevelDebug, true)
+//)
+//
+//func DefaultStdLogger() Log {
+//	return stdLogger
+//}
+//
+//type panicInfo struct {
+//	f string
+//	l int
+//	a interface{}
+//}
+//
+//func (this *panicInfo) String() string {
+//	return fmt.Sprint(this.a)
+//}
+//
+//func getStack() [][]byte {
+//	lines := make([][]byte, 0)
+//	stack := make([]byte, 128)
+//	for {
+//		n := runtime.Stack(stack, false)
+//		if n < len(stack) {
+//			stack = stack[:n]
+//			break
+//		}
+//		stack = make([]byte, len(stack)+128)
+//	}
+//	for len(stack) > 0 {
+//		i := bytes.IndexByte(stack, '\n')
+//		if i < 0 {
+//			return unknownStackLine
+//		}
+//		line := stack[:i]
+//		stack = stack[i+1:]
+//		if bytes.Contains(line, []byte("/runtime/panic.go")) {
+//			for len(stack) > 0 {
+//				i = bytes.IndexByte(stack, '\n')
+//				if i < 0 {
+//					return unknownStackLine
+//				}
+//				line = stack[:i]
+//				stack = stack[i+1:]
+//				if line[0] == '\t' {
+//					j := 1
+//					for ; j < len(line); j++ {
+//						if line[j] == ' ' {
+//							break
+//						}
+//					}
+//					lines = append(lines, line[1:j])
+//				}
+//			}
+//			return lines
+//		}
+//	}
+//	return unknownStackLine
+//}
+//
+//func ParseLevel(s string) Level {
+//	switch s {
+//	case "info":
+//		return LevelInfo
+//	case "warn":
+//		return LevelWarn
+//	case "error":
+//		return LevelError
+//	default:
+//		return LevelDebug
+//	}
+//}
+//
+//func Print(w io.Writer, l Level, s bool, d int, i string) {
+//	w.Write(startHeader)
+//	printTimeAndLevel(w, l)
+//	if s {
+//		_, f, l, o := runtime.Caller(d + 1)
+//		if !o {
+//			printFileLine(w, &unknownFile, 0)
+//		} else {
+//			printFileLine(w, &f, l)
+//		}
+//	}
+//	w.Write(endHeader)
+//	io.WriteString(w, i)
+//	w.Write(newline)
+//}
+//
+//func Printf(w io.Writer, l Level, s bool, d int, f string, a ... interface{}) {
+//	Print(w, l, s, d+1, fmt.Sprintf(f, a...))
+//}
+//
+//func printTimeAndLevel(w io.Writer, l Level) {
+//	t := time.Now()
+//	var buf [31]byte
+//	b := buf[:]
+//	year, month, day := t.Date()
+//	formatAlignInteger(b[0:4], year)
+//	b[4] = DateSeparator
+//	formatAlignInteger(b[5:7], int(month))
+//	b[7] = DateSeparator
+//	formatAlignInteger(b[8:10], day)
+//	b[10] = DateTimeSeparator
+//	hour, min, sec := t.Clock()
+//	formatAlignInteger(b[11:13], hour)
+//	b[13] = TimeSeparator
+//	formatAlignInteger(b[14:16], min)
+//	b[16] = TimeSeparator
+//	formatAlignInteger(b[17:19], sec)
+//	b[19] = NanoSecSeparator
+//	formatAlignInteger(b[20:29], t.Nanosecond())
+//	b[29] = ' '
+//	switch l {
+//	case LevelDebug:
+//		b[30] = 'd'
+//	case LevelInfo:
+//		b[30] = 'i'
+//	case LevelWarn:
+//		b[30] = 'w'
+//	case LevelError:
+//		b[30] = 'e'
+//	case _LevelPanic:
+//		b[30] = 'p'
+//	default:
+//		b[30] = 'n'
+//	}
+//	w.Write(b)
+//}
+//
+//func printFileLine(w io.Writer, s *string, l int) {
+//	w.Write(space)
+//	io.WriteString(w, *s)
+//	var buf [22]byte
+//	buf[0] = ':'
+//	b := buf[:]
+//	n := formatInteger(b[1:], l)
+//	n++
+//	b[n] = ':'
+//	w.Write(b[:n+1])
+//}
+//
+//func Recover(w io.Writer, r interface{}) bool {
+//	if nil == r {
+//		return false
+//	}
+//	w.Write(startHeader)
+//	printTimeAndLevel(w, _LevelPanic)
+//	switch r.(type) {
+//	case *panicInfo:
+//		info := r.(*panicInfo)
+//		printFileLine(w, &info.f, info.l)
+//		w.Write(endHeader)
+//		text := fmt.Sprint(info.a)
+//		io.WriteString(w, text)
+//	default:
+//		w.Write(space)
+//		stacks := getStack()
+//		if len(stacks) > 0 {
+//			w.Write(stacks[0])
+//			w.Write(colon)
+//		}
+//		for i := 1; i < len(stacks); i++ {
+//			w.Write(space)
+//			w.Write(stacks[i])
+//			w.Write(colon)
+//		}
+//		w.Write(endHeader)
+//		text := fmt.Sprint(r)
+//		io.WriteString(w, text)
+//	}
+//	w.Write(newline)
+//	return true
+//}
+//
+//func Panic(a interface{}) {
+//	if nil != a {
+//		ee := new(panicInfo)
+//		ee.a = a
+//		_, ee.f, ee.l, _ = runtime.Caller(1)
+//		panic(ee)
+//	}
+//}
+//
+//func Panicf(f string, a ... interface{}) {
+//	ee := new(panicInfo)
+//	ee.a = fmt.Sprintf(f, a...)
+//	_, ee.f, ee.l, _ = runtime.Caller(1)
+//	panic(ee)
+//}
+//
+//type Log interface {
+//	Print(l Level, d int, s string)
+//	Printf(l Level, d int, f string, a ...interface{})
+//	Recover(r interface{}) bool
+//	SetLevel(l Level)
+//	io.Closer
+//}
+//
+//type StdLogger struct {
+//	mux   sync.Mutex
+//	stack bool
+//	level Level
+//}
+//
+//func (this *StdLogger) Print(l Level, d int, s string) {
+//	if l >= this.level {
+//		this.mux.Lock()
+//		Print(os.Stderr, l, this.stack, d+1, s)
+//		this.mux.Unlock()
+//	}
+//}
+//
+//func (this *StdLogger) Printf(l Level, d int, f string, a ...interface{}) {
+//	if l >= this.level {
+//		this.mux.Lock()
+//		Printf(os.Stderr, l, this.stack, d+1, f, a...)
+//		this.mux.Unlock()
+//	}
+//}
+//
+//func (this *StdLogger) Recover(r interface{}) bool {
+//	this.mux.Lock()
+//	defer this.mux.Unlock()
+//	return Recover(os.Stderr, r)
+//}
+//
+//func (this *StdLogger) Close() error {
+//	return nil
+//}
+//
+//func (this *StdLogger) SetLevel(l Level) {
+//	this.level = l
+//}
+//
+//func NewStdLogger(level Level, stack bool) *StdLogger {
+//	return &StdLogger{level: level, stack: stack}
+//}
+//
+//// format
+//// 2019-04-24 18:15:56.602572000
+//// 29字节
+//type TimeFormat [30]byte

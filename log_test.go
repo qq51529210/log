@@ -1,53 +1,61 @@
 package log
 
 import (
+	"bytes"
+	"log"
+	"os"
 	"testing"
 )
 
-func f0(logger Logger) {
-	logger.Print(LevelDebug, 0, "debug")
-	f1(logger)
-}
-
-func f1(logger Logger) {
-	logger.Print(LevelInfo, 1, "info")
-	f2(logger)
-}
-
-func f2(logger Logger) {
-	logger.Print(LevelWarn, 2, "warn")
-	f3(logger)
-}
-
-func f3(logger Logger) {
-	logger.Print(LevelError, 3, "error")
-}
-
-func f4() {
-	Panic("log panic")
-}
-
-func f5(logger Logger) {
-	defer func() {
-		logger.Recover(recover())
-	}()
-	f0(logger)
-	f4()
-}
-
-func f6(logger Logger) {
-	defer func() {
-		logger.Recover(recover())
-	}()
-	f0(logger)
-	panic("go panic")
-}
+var (
+	benchmarkString = "1234567890asdfghjklqwertyuiopmnbvcxz,./';][=-<>?:{}|\\+_)(*&^%$#@!~"
+)
 
 func TestLog(t *testing.T) {
-	l1 := NewStdLogger(LevelDebug,true)
-	f5(l1)
-	f6(l1)
-	l2 := NewStdLogger(LevelDebug,false)
-	f5(l2)
-	f6(l2)
+	for i := 0; i < 2; i++ {
+		Print(os.Stderr, LevelDebug, 0, i%2 == 0, benchmarkString)
+		Printf(os.Stderr, LevelDebug, 0, i%2 == 0, "output: %s", benchmarkString)
+	}
+}
+
+func Benchmark_StdLog(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	buf := bytes.NewBuffer(nil)
+	logger := log.New(buf, "", log.Llongfile|log.LstdFlags|log.Lmicroseconds)
+	for i := 0; i < b.N; i++ {
+		logger.Println(benchmarkString)
+		buf.Reset()
+	}
+}
+
+func Benchmark_MyLog(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	buf := bytes.NewBuffer(nil)
+	for i := 0; i < b.N; i++ {
+		Print(buf, LevelDebug, 0, true, benchmarkString)
+		buf.Reset()
+	}
+}
+
+func Benchmark_Fmt_StdLog(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	buf := bytes.NewBuffer(nil)
+	logger := log.New(buf, "d", log.Llongfile|log.LstdFlags|log.Lmicroseconds)
+	for i := 0; i < b.N; i++ {
+		logger.Printf("log %s", benchmarkString)
+		buf.Reset()
+	}
+}
+
+func Benchmark_Fmt_MyLog(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	buf := bytes.NewBuffer(nil)
+	for i := 0; i < b.N; i++ {
+		Printf(buf, LevelDebug, 0, true, "log %s", benchmarkString)
+		buf.Reset()
+	}
 }

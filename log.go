@@ -220,6 +220,16 @@ func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLi
 	return writer.Write(this.b)
 }
 
+func (this *Log) Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ... interface{}) (int, error) {
+	this.Reset()
+	this.DateTime(6)
+	this.Level(level)
+	this.FilePathLine(skip+1, fileLine)
+	fmt.Fprint(this, a...)
+	this.b = append(this.b, '\n')
+	return writer.Write(this.b)
+}
+
 func (this *Log) D(writer io.Writer, fileLine FileLine, log string) (int, error) {
 	return this.Print(writer, LevelDebug, 1, fileLine, log)
 }
@@ -274,13 +284,15 @@ func Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format s
 	//return n, e
 }
 
-//func Recover(writer io.Writer) {
-//	re := recover()
-//	if re == nil {
-//		return
-//	}
-//
-//}
+func Recover(writer io.Writer) {
+	re := recover()
+	if re == nil {
+		return
+	}
+	l := logPool.Get().(*Log)
+	l.Print(writer, LevelPanic, 1, FileLineFullPath, fmt.Sprint(re))
+	logPool.Put(l)
+}
 
 //
 ///*

@@ -12,15 +12,23 @@ var (
 )
 
 func TestLog(t *testing.T) {
-	for i := 0; i < 3; i++ {
-		Print(os.Stderr, LevelDebug, 0, FileLine(i), benchmarkString)
-		Printf(os.Stderr, LevelDebug, 0, FileLine(i), "output: %s", benchmarkString)
+	level := []Level{
+		LevelDebug,
+		LevelInfo,
+		LevelWarn,
+		LevelError,
+		LevelPanic,
+	}
+	for i := 0; i < 5; i++ {
+		Print(os.Stderr, level[i], 0, FileLine(i%3), benchmarkString)
+		Printf(os.Stderr, level[i], 0, FileLine(i%3), "Printf: %s", benchmarkString)
 	}
 	logger := &Log{}
 	logger.D(os.Stderr, FileLineFullPath, benchmarkString)
 	logger.I(os.Stderr, FileLineFullPath, benchmarkString)
 	logger.W(os.Stderr, FileLineFullPath, benchmarkString)
 	logger.E(os.Stderr, FileLineFullPath, benchmarkString)
+	logger.Sprint(os.Stderr, LevelDebug, 0, FileLineName, "Sprint: ", benchmarkString)
 }
 
 func Benchmark_StdLog(b *testing.B) {
@@ -50,7 +58,7 @@ func Benchmark_Fmt_StdLog(b *testing.B) {
 	buf := bytes.NewBuffer(nil)
 	logger := log.New(buf, "d", log.Llongfile|log.LstdFlags|log.Lmicroseconds)
 	for i := 0; i < b.N; i++ {
-		logger.Printf("log %s", benchmarkString)
+		logger.Printf("Printf %s", benchmarkString)
 		buf.Reset()
 	}
 }
@@ -60,7 +68,7 @@ func Benchmark_Fmt_MyLog(b *testing.B) {
 	b.ResetTimer()
 	buf := bytes.NewBuffer(nil)
 	for i := 0; i < b.N; i++ {
-		Printf(buf, LevelDebug, 0, FileLineFullPath, "log %s", benchmarkString)
+		Printf(buf, LevelDebug, 0, FileLineFullPath, "Printf %s", benchmarkString)
 		buf.Reset()
 	}
 }
@@ -81,7 +89,7 @@ func Benchmark_fmt_Log(b *testing.B) {
 	logger := &Log{}
 	buf := bytes.NewBuffer(nil)
 	for i := 0; i < b.N; i++ {
-		logger.Printf(buf, LevelDebug, 0, FileLineFullPath, "log %s", benchmarkString)
+		logger.Printf(buf, LevelDebug, 0, FileLineFullPath, "Printf %s", benchmarkString)
 	}
 }
 

@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	fmtPool                = sync.Pool{}
+	logPool                = sync.Pool{}
 	SpaceSeparator    byte = ' '
 	DateSeparator     byte = '-'
 	TimeSeparator     byte = ':'
@@ -38,7 +38,7 @@ var (
 )
 
 func init() {
-	fmtPool.New = func() interface{} {
+	logPool.New = func() interface{} {
 		return &Log{}
 	}
 }
@@ -50,6 +50,7 @@ type Log struct {
 
 func (this *Log) Reset() {
 	this.n = 0
+	this.grow(34)
 }
 
 func (this *Log) grow(n int) {
@@ -146,7 +147,6 @@ func (this *Log) integer(n int) {
 }
 
 func (this *Log) DateTime(nsec int) {
-	this.grow(34)
 	// 2019-04-25 00:25:43:25.256131000_
 	date_time := time.Now()
 	year, month, day := date_time.Date()
@@ -168,9 +168,6 @@ func (this *Log) DateTime(nsec int) {
 	this.b[this.n] = TimeSeparator
 	this.n++
 	this.integerAlignLeft(second, 2)
-	this.b[this.n] = TimeSeparator
-	this.n++
-	this.integerAlignLeft(day, 2)
 	if nsec > 0 {
 		if nsec > 9 {
 			nsec = 9
@@ -189,16 +186,21 @@ func (this *Log) Byte(c byte) {
 }
 
 func (this *Log) Level(level Level) {
+	this.b[this.n] = byte(level)
+	this.n++
 	this.b[this.n] = SpaceSeparator
 	this.n++
 }
 
-func (this *Log) FilePathLine(skip int, full bool) {
+func (this *Log) FilePathLine(skip int, fileLine FileLine) {
+	if fileLine == FileLineDisable {
+		return
+	}
 	_, f, l, o := runtime.Caller(skip + 1)
 	if !o {
 		this.unknownFilePathLine()
 	} else {
-		if !full {
+		if FileLineFullPath == fileLine {
 			for i := len(f) - 1; i >= 0; i-- {
 				if f[i] == '/' {
 					this.filePathLine(f[i+1:], l)
@@ -236,33 +238,64 @@ func (this *Log) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func Print(writer io.Writer, level Level, skip int, full bool, log string) (int, error) {
-	f := fmtPool.Get().(*Log)
-	f.Reset()
-	f.DateTime(6)
-	f.Level(level)
-	f.FilePathLine(skip+1, full)
-	f.String(log)
-	f.grow(1)
-	f.Byte('\n')
-	n, e := writer.Write(f.b[:f.n])
-	fmtPool.Put(f)
-	return n, e
+func (this *Log) Print(writer io.Writer, level Level, skip int, fileLine FileLine, log string) (int, error) {
+	this.Reset()
+	this.DateTime(6)
+	this.Level(level)
+	this.FilePathLine(skip+1, fileLine)
+	this.String(log)
+	this.grow(1)
+	this.Byte('\n')
+	return writer.Write(this.b[:this.n])
 }
 
-func Printf(writer io.Writer, level Level, skip int, full bool, format string, a ... interface{}) (int, error) {
-	return Print(writer, level, skip+1, full, fmt.Sprintf(format, a...))
-	f := fmtPool.Get().(*Log)
-	f.Reset()
-	f.DateTime(6)
-	f.Level(level)
-	f.FilePathLine(skip+1, full)
-	fmt.Fprintf(f, format, a...)
-	f.grow(1)
-	f.Byte('\n')
-	n, e := writer.Write(f.b[:f.n])
-	fmtPool.Put(f)
+func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format string, a ... interface{}) (int, error) {
+	this.Reset()
+	this.DateTime(6)
+	this.Level(level)
+	this.FilePathLine(skip+1, fileLine)
+	fmt.Fprintf(this, format, a...)
+	this.grow(1)
+	this.Byte('\n')
+	return writer.Write(this.b[:this.n])
+}
+
+func Print(writer io.Writer, level Level, skip int, fileLine FileLine, log string) (int, error) {
+	l := logPool.Get().(*Log)
+	n, e := l.Print(writer, level, skip, fileLine, log)
+	logPool.Put(l)
 	return n, e
+
+	//l := logPool.Get().(*Log)
+	//l.Reset()
+	//l.DateTime(6)
+	//l.Level(level)
+	//l.FilePathLine(skip+1, fileLine)
+	//l.String(log)
+	//l.grow(1)
+	//l.Byte('\n')
+	//n, e := writer.Write(l.b[:l.n])
+	//logPool.Put(l)
+	//return n, e
+}
+
+func Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format string, a ... interface{}) (int, error) {
+	l := logPool.Get().(*Log)
+	n, e := l.Printf(writer, level, skip, fileLine, format, a...)
+	logPool.Put(l)
+	return n, e
+
+	//l := logPool.Get().(*Log)
+	//l.Reset()
+	//l.DateTime(6)
+	//l.Level(level)
+	//l.FilePathLine(skip+1, fileLine)
+	//fmt.Fprintf(f, format, a...)
+	//l.grow(1)
+	//l.Byte('\n')
+	//n, e := writer.Write(l.b[:l.n])
+	//logPool.Put(l)
+	//return n, e
 }
 
 func Recover(writer io.Writer) {

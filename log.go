@@ -50,10 +50,10 @@ type Log struct {
 
 func (this *Log) Reset() {
 	this.n = 0
-	this.grow(34)
+	this.Grow(34)
 }
 
-func (this *Log) grow(n int) {
+func (this *Log) Grow(n int) {
 	left := len(this.b) - this.n
 	if left < n {
 		this.b = append(this.b, make([]byte, n-left)...)
@@ -216,24 +216,24 @@ func (this *Log) FilePathLine(skip int, fileLine FileLine) {
 }
 
 func (this *Log) unknownFilePathLine() {
-	this.grow(len(unknownFileLine) + 1)
+	this.Grow(len(unknownFileLine) + 1)
 	this.n += copy(this.b[:this.n], unknownFileLine)
 }
 
 func (this *Log) filePathLine(f string, l int) {
-	this.grow(len(f) + MaxIntegerLength + 1)
+	this.Grow(len(f) + MaxIntegerLength + 1)
 	this.n += copy(this.b[this.n:], f)
 	this.Byte(FileLineSeparator)
 	this.integer(l)
 }
 
 func (this *Log) String(s string) {
-	this.grow(len(s))
+	this.Grow(len(s))
 	this.n += copy(this.b[this.n:], s)
 }
 
 func (this *Log) Write(b []byte) (int, error) {
-	this.grow(len(b))
+	this.Grow(len(b))
 	this.n += copy(this.b[this.n:], b)
 	return len(b), nil
 }
@@ -244,7 +244,7 @@ func (this *Log) Print(writer io.Writer, level Level, skip int, fileLine FileLin
 	this.Level(level)
 	this.FilePathLine(skip+1, fileLine)
 	this.String(log)
-	this.grow(1)
+	this.Grow(1)
 	this.Byte('\n')
 	return writer.Write(this.b[:this.n])
 }
@@ -255,7 +255,7 @@ func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLi
 	this.Level(level)
 	this.FilePathLine(skip+1, fileLine)
 	fmt.Fprintf(this, format, a...)
-	this.grow(1)
+	this.Grow(1)
 	this.Byte('\n')
 	return writer.Write(this.b[:this.n])
 }

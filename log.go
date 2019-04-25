@@ -45,151 +45,123 @@ func init() {
 
 type Log struct {
 	b []byte
-	n int
 }
 
 func (this *Log) Reset() {
-	this.n = 0
-	this.Grow(34)
-}
-
-func (this *Log) Grow(n int) {
-	left := len(this.b) - this.n
-	if left < n {
-		this.b = append(this.b, make([]byte, n-left)...)
-	}
+	this.b = this.b[0:0]
 }
 
 func (this *Log) integerAlignRight(value, length int) {
-	max := this.n + length
 	// 值是倒转的
-	m := this.n
-	for value > 0 {
-		this.b[m] = byte('0' + value%10)
+	i1 := len(this.b)
+	for {
+		this.b = append(this.b, byte('0'+value%10))
 		value /= 10
-		m++
+		if value == 0 {
+			break
+		}
 		length--
 	}
 	// 先反转
 	c := byte(0)
-	i := this.n
-	this.n = m
-	m--
-	for i < m {
-		c = this.b[i]
-		this.b[i] = this.b[m]
-		this.b[m] = c
-		m--
-		i++
+	i2 := len(this.b) - 1
+	for i1 < i2 {
+		c = this.b[i1]
+		this.b[i1] = this.b[i2]
+		this.b[i2] = c
+		i2--
+		i1++
 	}
 	// 再后面补0
 	for length > 0 {
-		this.b[m] = '0'
-		m++
+		this.b = append(this.b, byte('0'))
 		length--
-	}
-	if this.n > max {
-		this.n = max
 	}
 }
 
 func (this *Log) integerAlignLeft(value, length int) {
-	max := this.n + length
 	// 值是倒转的
-	m := this.n
-	for value > 0 {
-		this.b[m] = byte('0' + value%10)
+	i1 := len(this.b)
+	for {
+		this.b = append(this.b, byte('0'+value%10))
 		value /= 10
-		m++
+		if value == 0 {
+			break
+		}
 		length--
 	}
 	// 继续在后面补0
-	for length > 0 {
-		this.b[m] = '0'
-		m++
+	i2 := len(this.b) - i1
+	for length > i2 {
+		this.b = append(this.b, byte('0'))
 		length--
 	}
 	// 反转
+	i2 = len(this.b) - 1
 	c := byte(0)
-	i := this.n
-	this.n = m
-	m--
-	for i < m {
-		c = this.b[i]
-		this.b[i] = this.b[m]
-		this.b[m] = c
-		m--
-		i++
-	}
-	if this.n > max {
-		this.n = max
+	for i1 < i2 {
+		c = this.b[i1]
+		this.b[i1] = this.b[i2]
+		this.b[i2] = c
+		i2--
+		i1++
 	}
 }
 
-func (this *Log) integer(n int) {
-	m := this.n
-	for n > 0 {
-		this.b[m] = byte('0' + n%10)
-		n /= 10
-		m++
-	}
-	c := byte(0)
-	i := this.n
-	this.n = m
-	m--
-	for i < m {
-		c = this.b[i]
-		this.b[i] = this.b[m]
-		this.b[m] = c
-		m--
-		i++
-	}
-}
-
-func (this *Log) DateTime(nsec int) {
-	// 2019-04-25 00:25:43:25.256131000_
-	date_time := time.Now()
-	year, month, day := date_time.Date()
-	hour, minute, second := date_time.Clock()
-	// fmt
-	this.integerAlignLeft(year, 4)
-	this.b[this.n] = DateSeparator
-	this.n++
-	this.integerAlignLeft(int(month), 2)
-	this.b[this.n] = DateSeparator
-	this.n++
-	this.integerAlignLeft(day, 2)
-	this.b[this.n] = SpaceSeparator
-	this.n++
-	this.integerAlignLeft(hour, 2)
-	this.b[this.n] = TimeSeparator
-	this.n++
-	this.integerAlignLeft(minute, 2)
-	this.b[this.n] = TimeSeparator
-	this.n++
-	this.integerAlignLeft(second, 2)
-	if nsec > 0 {
-		if nsec > 9 {
-			nsec = 9
+func (this *Log) integer(value int) {
+	i1 := len(this.b)
+	for {
+		this.b = append(this.b, byte('0'+value%10))
+		value /= 10
+		if value == 0 {
+			break
 		}
-		this.b[this.n] = NanoSecSeparator
-		this.n++
-		this.integerAlignRight(date_time.Nanosecond(), nsec)
 	}
-	this.b[this.n] = SpaceSeparator
-	this.n++
+	i2 := len(this.b) - 1
+	c := byte(0)
+	for i1 < i2 {
+		c = this.b[i1]
+		this.b[i1] = this.b[i2]
+		this.b[i2] = c
+		i2--
+		i1++
+	}
 }
 
 func (this *Log) Byte(c byte) {
-	this.b[this.n] = c
-	this.n++
+	this.b = append(this.b, c)
+}
+
+func (this *Log) DateTime(nsec int) {
+	date_time := time.Now()
+	year, month, day := date_time.Date()
+	hour, minute, second := date_time.Clock()
+
+	this.integerAlignLeft(year, 4)
+	this.b = append(this.b, DateSeparator)
+	this.integerAlignLeft(int(month), 2)
+	this.b = append(this.b, DateSeparator)
+	this.integerAlignLeft(day, 2)
+	this.b = append(this.b, SpaceSeparator)
+	this.integerAlignLeft(hour, 2)
+	this.b = append(this.b, TimeSeparator)
+	this.integerAlignLeft(minute, 2)
+	this.b = append(this.b, TimeSeparator)
+	this.integerAlignLeft(second, 2)
+	if nsec > 0 {
+		// 再长没有意义
+		if nsec > 6 {
+			nsec = 6
+		}
+		this.b = append(this.b, NanoSecSeparator)
+		this.integerAlignRight(date_time.Nanosecond(), nsec)
+	}
+	this.b = append(this.b, SpaceSeparator)
 }
 
 func (this *Log) Level(level Level) {
-	this.b[this.n] = byte(level)
-	this.n++
-	this.b[this.n] = SpaceSeparator
-	this.n++
+	this.b = append(this.b, byte(level))
+	this.b = append(this.b, SpaceSeparator)
 }
 
 func (this *Log) FilePathLine(skip int, fileLine FileLine) {
@@ -198,43 +170,33 @@ func (this *Log) FilePathLine(skip int, fileLine FileLine) {
 	}
 	_, f, l, o := runtime.Caller(skip + 1)
 	if !o {
-		this.unknownFilePathLine()
+		this.b = append(this.b, unknownFileLine...)
 	} else {
 		if FileLineFullPath == fileLine {
 			for i := len(f) - 1; i >= 0; i-- {
 				if f[i] == '/' {
-					this.filePathLine(f[i+1:], l)
+					this.b = append(this.b, f[i+1:]...)
+					this.b = append(this.b, FileLineSeparator)
+					this.integer(l)
 					break
 				}
 			}
 		} else {
-			this.filePathLine(f, l)
+			this.b = append(this.b, f...)
+			this.b = append(this.b, FileLineSeparator)
+			this.integer(l)
 		}
 	}
-	this.b[this.n] = SpaceSeparator
-	this.n++
-}
-
-func (this *Log) unknownFilePathLine() {
-	this.Grow(len(unknownFileLine) + 1)
-	this.n += copy(this.b[:this.n], unknownFileLine)
-}
-
-func (this *Log) filePathLine(f string, l int) {
-	this.Grow(len(f) + MaxIntegerLength + 1)
-	this.n += copy(this.b[this.n:], f)
-	this.Byte(FileLineSeparator)
-	this.integer(l)
+	this.b = append(this.b, FileLineSeparator)
+	this.b = append(this.b, SpaceSeparator)
 }
 
 func (this *Log) String(s string) {
-	this.Grow(len(s))
-	this.n += copy(this.b[this.n:], s)
+	this.b = append(this.b, s...)
 }
 
 func (this *Log) Write(b []byte) (int, error) {
-	this.Grow(len(b))
-	this.n += copy(this.b[this.n:], b)
+	this.b = append(this.b, b...)
 	return len(b), nil
 }
 
@@ -244,9 +206,8 @@ func (this *Log) Print(writer io.Writer, level Level, skip int, fileLine FileLin
 	this.Level(level)
 	this.FilePathLine(skip+1, fileLine)
 	this.String(log)
-	this.Grow(1)
-	this.Byte('\n')
-	return writer.Write(this.b[:this.n])
+	this.b = append(this.b, '\n')
+	return writer.Write(this.b)
 }
 
 func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format string, a ... interface{}) (int, error) {
@@ -255,9 +216,8 @@ func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLi
 	this.Level(level)
 	this.FilePathLine(skip+1, fileLine)
 	fmt.Fprintf(this, format, a...)
-	this.Grow(1)
-	this.Byte('\n')
-	return writer.Write(this.b[:this.n])
+	this.b = append(this.b, '\n')
+	return writer.Write(this.b)
 }
 
 func Print(writer io.Writer, level Level, skip int, fileLine FileLine, log string) (int, error) {
@@ -298,13 +258,13 @@ func Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format s
 	//return n, e
 }
 
-func Recover(writer io.Writer) {
-	re := recover()
-	if re == nil {
-		return
-	}
-
-}
+//func Recover(writer io.Writer) {
+//	re := recover()
+//	if re == nil {
+//		return
+//	}
+//
+//}
 
 //
 ///*

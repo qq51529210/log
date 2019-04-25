@@ -7,6 +7,14 @@ Log结构表示一行日志，有自己的缓存，输出到write中是整条日
 <br>
 使用了sync.Pool来缓存Log对象，并发安全的。
 </p>
+<p>
+还实现了几个io.Writer<br>
+<ul>
+<li>LoggerFile，保存到本地磁盘文件</li>
+<li>LoggerKafka，保存到Kafka，未实现</li>
+<li>LoggerFlume，保存到Flume，未实现</li>
+</ul>
+</p>
 
 <h3>使用方法，在log_test.go文件中</h3>
 <pre>

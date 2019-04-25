@@ -172,7 +172,7 @@ func (this *Log) FilePathLine(skip int, fileLine FileLine) {
 	if !o {
 		this.b = append(this.b, unknownFileLine...)
 	} else {
-		if FileLineFullPath == fileLine {
+		if FileLineName == fileLine {
 			for i := len(f) - 1; i >= 0; i-- {
 				if f[i] == '/' {
 					this.b = append(this.b, f[i+1:]...)
@@ -220,9 +220,25 @@ func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLi
 	return writer.Write(this.b)
 }
 
+func (this *Log) D(writer io.Writer, fileLine FileLine, log string) (int, error) {
+	return this.Print(writer, LevelDebug, 1, fileLine, log)
+}
+
+func (this *Log) I(writer io.Writer, fileLine FileLine, log string) (int, error) {
+	return this.Print(writer, LevelInfo, 1, fileLine, log)
+}
+
+func (this *Log) W(writer io.Writer, fileLine FileLine, log string) (int, error) {
+	return this.Print(writer, LevelWarn, 1, fileLine, log)
+}
+
+func (this *Log) E(writer io.Writer, fileLine FileLine, log string) (int, error) {
+	return this.Print(writer, LevelError, 1, fileLine, log)
+}
+
 func Print(writer io.Writer, level Level, skip int, fileLine FileLine, log string) (int, error) {
 	l := logPool.Get().(*Log)
-	n, e := l.Print(writer, level, skip, fileLine, log)
+	n, e := l.Print(writer, level, skip+1, fileLine, log)
 	logPool.Put(l)
 	return n, e
 
@@ -241,7 +257,7 @@ func Print(writer io.Writer, level Level, skip int, fileLine FileLine, log strin
 
 func Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format string, a ... interface{}) (int, error) {
 	l := logPool.Get().(*Log)
-	n, e := l.Printf(writer, level, skip, fileLine, format, a...)
+	n, e := l.Printf(writer, level, skip+1, fileLine, format, a...)
 	logPool.Put(l)
 	return n, e
 

@@ -16,6 +16,11 @@ func TestLog(t *testing.T) {
 		Print(os.Stderr, LevelDebug, 0, FileLine(i), benchmarkString)
 		Printf(os.Stderr, LevelDebug, 0, FileLine(i), "output: %s", benchmarkString)
 	}
+	logger := &Log{}
+	logger.D(os.Stderr, FileLineFullPath, benchmarkString)
+	logger.I(os.Stderr, FileLineFullPath, benchmarkString)
+	logger.W(os.Stderr, FileLineFullPath, benchmarkString)
+	logger.E(os.Stderr, FileLineFullPath, benchmarkString)
 }
 
 func Benchmark_StdLog(b *testing.B) {
@@ -77,5 +82,15 @@ func Benchmark_fmt_Log(b *testing.B) {
 	buf := bytes.NewBuffer(nil)
 	for i := 0; i < b.N; i++ {
 		logger.Printf(buf, LevelDebug, 0, FileLineFullPath, "log %s", benchmarkString)
+	}
+}
+
+func Benchmark_MyLogD(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	logger := &Log{}
+	buf := bytes.NewBuffer(nil)
+	for i := 0; i < b.N; i++ {
+		logger.D(buf, FileLineFullPath, benchmarkString)
 	}
 }

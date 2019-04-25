@@ -381,9 +381,19 @@ func (this *Error) Error() string {
 }
 
 func Panic(log string) {
+	panic(newError(1, log))
+}
+
+func CheckError(e error) {
+	if e != nil {
+		panic(newError(1, e.Error()))
+	}
+}
+
+func newError(skip int, log string) error {
 	// 获取Error
 	e := errPool.Get().(*Error)
-	_, f, l, o := runtime.Caller(1)
+	_, f, l, o := runtime.Caller(skip + 1)
 	if o {
 		e.File = f
 		e.Line = l
@@ -392,6 +402,5 @@ func Panic(log string) {
 		e.Line = -1
 	}
 	e.Log = log
-	// panic
-	panic(e)
+	return e
 }

@@ -11,12 +11,12 @@ import (
 type Level byte
 
 const (
-	LevelDebug       Level = 'd'
-	LevelInfo        Level = 'i'
-	LevelWarn        Level = 'w'
-	LevelError       Level = 'e'
-	LevelPanic       Level = 'p'
-	MaxIntegerLength       = 20
+	LevelDebug   Level = 'D'
+	LevelInfo    Level = 'I'
+	LevelWarn    Level = 'W'
+	LevelError   Level = 'E'
+	LevelPanic   Level = 'P'
+	LevelRecover Level = 'R'
 )
 
 type FileLine byte
@@ -29,17 +29,23 @@ const (
 
 var (
 	logPool                = sync.Pool{}
-	SpaceSeparator    byte = ' '
-	DateSeparator     byte = '-'
-	TimeSeparator     byte = ':'
-	NanoSecSeparator  byte = '.'
-	FileLineSeparator byte = ':'
+	errPool                = sync.Pool{}
+	SpaceSeparator    byte = ' ' // 空格
+	DateSeparator     byte = '-' // 日期
+	TimeSeparator     byte = ':' // 时间
+	NanoSecSeparator  byte = '.' // 纳秒
+	FileLineSeparator byte = ':' // 堆栈
+	NanoSecLength          = 6   // 打印纳秒的长度
 	unknownFileLine        = []byte("???:-1:")
+	panicLine              = []byte("/runtime/panic.go")
 )
 
 func init() {
 	logPool.New = func() interface{} {
 		return &Log{}
+	}
+	errPool.New = func() interface{} {
+		return &Error{}
 	}
 }
 
@@ -51,9 +57,14 @@ func (this *Log) Reset() {
 	this.b = this.b[0:0]
 }
 
-func (this *Log) integerAlignRight(value, length int) {
+func (this *Log) Bytes() []byte {
+	return this.b
+}
+
+func (this *Log) IntegerAlignRight(value, length int) {
 	// 值是倒转的
 	i1 := len(this.b)
+	end := i1 + length
 	for {
 		this.b = append(this.b, byte('0'+value%10))
 		value /= 10
@@ -77,9 +88,12 @@ func (this *Log) integerAlignRight(value, length int) {
 		this.b = append(this.b, byte('0'))
 		length--
 	}
+	if len(this.b) > end {
+		this.b = this.b[:end]
+	}
 }
 
-func (this *Log) integerAlignLeft(value, length int) {
+func (this *Log) IntegerAlignLeft(value, length int) {
 	// 值是倒转的
 	i1 := len(this.b)
 	for {
@@ -108,7 +122,7 @@ func (this *Log) integerAlignLeft(value, length int) {
 	}
 }
 
-func (this *Log) integer(value int) {
+func (this *Log) Integer(value int) {
 	i1 := len(this.b)
 	for {
 		this.b = append(this.b, byte('0'+value%10))
@@ -132,29 +146,33 @@ func (this *Log) Byte(c byte) {
 	this.b = append(this.b, c)
 }
 
+func (this *Log) EndLine() {
+	this.b = append(this.b, '\n')
+}
+
 func (this *Log) DateTime(nsec int) {
 	date_time := time.Now()
 	year, month, day := date_time.Date()
 	hour, minute, second := date_time.Clock()
 
-	this.integerAlignLeft(year, 4)
+	this.IntegerAlignLeft(year, 4)
 	this.b = append(this.b, DateSeparator)
-	this.integerAlignLeft(int(month), 2)
+	this.IntegerAlignLeft(int(month), 2)
 	this.b = append(this.b, DateSeparator)
-	this.integerAlignLeft(day, 2)
+	this.IntegerAlignLeft(day, 2)
 	this.b = append(this.b, SpaceSeparator)
-	this.integerAlignLeft(hour, 2)
+	this.IntegerAlignLeft(hour, 2)
 	this.b = append(this.b, TimeSeparator)
-	this.integerAlignLeft(minute, 2)
+	this.IntegerAlignLeft(minute, 2)
 	this.b = append(this.b, TimeSeparator)
-	this.integerAlignLeft(second, 2)
+	this.IntegerAlignLeft(second, 2)
 	if nsec > 0 {
 		// 再长没有意义
 		if nsec > 6 {
 			nsec = 6
 		}
 		this.b = append(this.b, NanoSecSeparator)
-		this.integerAlignRight(date_time.Nanosecond(), nsec)
+		this.IntegerAlignRight(date_time.Nanosecond(), nsec)
 	}
 	this.b = append(this.b, SpaceSeparator)
 }
@@ -165,26 +183,25 @@ func (this *Log) Level(level Level) {
 }
 
 func (this *Log) FilePathLine(skip int, fileLine FileLine) {
-	if fileLine == FileLineDisable {
-		return
-	}
-	_, f, l, o := runtime.Caller(skip + 1)
-	if !o {
-		this.b = append(this.b, unknownFileLine...)
-	} else {
-		if FileLineName == fileLine {
-			for i := len(f) - 1; i >= 0; i-- {
-				if f[i] == '/' {
-					this.b = append(this.b, f[i+1:]...)
-					this.b = append(this.b, FileLineSeparator)
-					this.integer(l)
-					break
-				}
-			}
+	if fileLine != FileLineDisable {
+		_, f, l, o := runtime.Caller(skip + 1)
+		if !o {
+			this.b = append(this.b, unknownFileLine...)
 		} else {
-			this.b = append(this.b, f...)
-			this.b = append(this.b, FileLineSeparator)
-			this.integer(l)
+			if FileLineName == fileLine {
+				for i := len(f) - 1; i >= 0; i-- {
+					if f[i] == '/' {
+						this.b = append(this.b, f[i+1:]...)
+						this.b = append(this.b, FileLineSeparator)
+						this.Integer(l)
+						break
+					}
+				}
+			} else {
+				this.b = append(this.b, f...)
+				this.b = append(this.b, FileLineSeparator)
+				this.Integer(l)
+			}
 		}
 	}
 	this.b = append(this.b, FileLineSeparator)
@@ -206,7 +223,7 @@ func (this *Log) Print(writer io.Writer, level Level, skip int, fileLine FileLin
 	this.Level(level)
 	this.FilePathLine(skip+1, fileLine)
 	this.String(log)
-	this.b = append(this.b, '\n')
+	this.EndLine()
 	return writer.Write(this.b)
 }
 
@@ -215,8 +232,9 @@ func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLi
 	this.DateTime(6)
 	this.Level(level)
 	this.FilePathLine(skip+1, fileLine)
+	//this.String(fmt.Sprintf(format,a...))
 	fmt.Fprintf(this, format, a...)
-	this.b = append(this.b, '\n')
+	this.EndLine()
 	return writer.Write(this.b)
 }
 
@@ -226,7 +244,7 @@ func (this *Log) Sprint(writer io.Writer, level Level, skip int, fileLine FileLi
 	this.Level(level)
 	this.FilePathLine(skip+1, fileLine)
 	fmt.Fprint(this, a...)
-	this.b = append(this.b, '\n')
+	this.EndLine()
 	return writer.Write(this.b)
 }
 
@@ -246,23 +264,55 @@ func (this *Log) E(writer io.Writer, fileLine FileLine, log string) (int, error)
 	return this.Print(writer, LevelError, 1, fileLine, log)
 }
 
+func (this *Log) Stack() {
+	i1 := len(this.b)
+	i2 := 0
+	n := 0
+	for {
+		this.b = append(this.b, make([]byte, 64)...)
+		n = runtime.Stack(this.b[i1:], false)
+		i2 = i1 + n
+		if i2 < len(this.b) {
+			this.b = this.b[:i2]
+			break
+		}
+	}
+	// 简化一下
+	n = i2 - 1
+	m := i1
+	for i := i1; i < n; {
+		// 找出每一行
+		if this.b[i] == '\t' {
+			this.b[i] = ' '
+			// 开始
+			i1 = i + 1
+			i++
+			for ; i < n; i++ {
+				if this.b[i] == ' ' {
+					i2 = i + 1
+					m += copy(this.b[m:], this.b[i1:i2])
+					break
+				}
+			}
+		}
+		i++
+	}
+	this.b = this.b[:m]
+}
+
+func Get() *Log {
+	return logPool.Get().(*Log)
+}
+
+func Put(l *Log) {
+	logPool.Put(l)
+}
+
 func Print(writer io.Writer, level Level, skip int, fileLine FileLine, log string) (int, error) {
 	l := logPool.Get().(*Log)
 	n, e := l.Print(writer, level, skip+1, fileLine, log)
 	logPool.Put(l)
 	return n, e
-
-	//l := logPool.Get().(*Log)
-	//l.Reset()
-	//l.DateTime(6)
-	//l.Level(level)
-	//l.FilePathLine(skip+1, fileLine)
-	//l.String(log)
-	//l.grow(1)
-	//l.Byte('\n')
-	//n, e := writer.Write(l.b[:l.n])
-	//logPool.Put(l)
-	//return n, e
 }
 
 func Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format string, a ... interface{}) (int, error) {
@@ -270,28 +320,81 @@ func Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format s
 	n, e := l.Printf(writer, level, skip+1, fileLine, format, a...)
 	logPool.Put(l)
 	return n, e
-
-	//l := logPool.Get().(*Log)
-	//l.Reset()
-	//l.DateTime(6)
-	//l.Level(level)
-	//l.FilePathLine(skip+1, fileLine)
-	//fmt.Fprintf(f, format, a...)
-	//l.grow(1)
-	//l.Byte('\n')
-	//n, e := writer.Write(l.b[:l.n])
-	//logPool.Put(l)
-	//return n, e
 }
 
-func Recover(writer io.Writer) {
+func Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ... interface{}) (int, error) {
+	l := logPool.Get().(*Log)
+	n, e := l.Sprint(writer, level, skip+1, fileLine, a...)
+	logPool.Put(l)
+	return n, e
+}
+
+func Recover(writer io.Writer, cb func()) {
+	// recover
 	re := recover()
 	if re == nil {
 		return
 	}
+	// 获取Log
 	l := logPool.Get().(*Log)
-	l.Print(writer, LevelPanic, 1, FileLineFullPath, fmt.Sprint(re))
+	l.Reset()
+	if e, o := re.(*Error); o {
+		// 级别，recover
+		l.Level(LevelRecover)
+		// 时间
+		l.DateTime(6)
+		// 如果是log.Error，可以提升性能
+		l.b = append(l.b, e.File...)
+		l.b = append(l.b, FileLineSeparator)
+		l.Integer(e.Line)
+		l.b = append(l.b, FileLineSeparator)
+		l.b = append(l.b, SpaceSeparator)
+		l.String(e.Log)
+		errPool.Put(e)
+	} else {
+		// 级别，panic
+		l.Level(LevelPanic)
+		// 时间
+		l.DateTime(6)
+		// 信息
+		l.String(fmt.Sprint(re))
+		l.Byte(SpaceSeparator)
+		// 不是log.Error，从堆栈找到panic的行
+		l.Stack()
+	}
+	l.EndLine()
+	writer.Write(l.b)
 	logPool.Put(l)
+	// 回调函数
+	if cb != nil {
+		cb()
+	}
+}
+
+type Error struct {
+	File string // 文件路径
+	Line int    // 文件行
+	Log  string // 信息
+}
+
+func (this *Error) Error() string {
+	return this.Log
+}
+
+func Panic(log string) {
+	// 获取Error
+	e := errPool.Get().(*Error)
+	_, f, l, o := runtime.Caller(1)
+	if o {
+		e.File = f
+		e.Line = l
+	} else {
+		e.File = "???"
+		e.Line = -1
+	}
+	e.Log = log
+	// panic
+	panic(e)
 }
 
 //
@@ -421,20 +524,20 @@ func Recover(writer io.Writer) {
 //	var buf [31]byte
 //	b := buf[:]
 //	year, month, day := t.Date()
-//	formatAligninteger(b[0:4], year)
+//	formatAlignInteger(b[0:4], year)
 //	b[4] = DateSeparator
-//	formatAligninteger(b[5:7], int(month))
+//	formatAlignInteger(b[5:7], int(month))
 //	b[7] = DateSeparator
-//	formatAligninteger(b[8:10], day)
+//	formatAlignInteger(b[8:10], day)
 //	b[10] = DateTimeSeparator
 //	hour, min, sec := t.Clock()
-//	formatAligninteger(b[11:13], hour)
+//	formatAlignInteger(b[11:13], hour)
 //	b[13] = TimeSeparator
-//	formatAligninteger(b[14:16], min)
+//	formatAlignInteger(b[14:16], min)
 //	b[16] = TimeSeparator
-//	formatAligninteger(b[17:19], sec)
+//	formatAlignInteger(b[17:19], sec)
 //	b[19] = NanoSecSeparator
-//	formatAligninteger(b[20:29], t.Nanosecond())
+//	formatAlignInteger(b[20:29], t.Nanosecond())
 //	b[29] = ' '
 //	switch l {
 //	case LevelDebug:
@@ -459,7 +562,7 @@ func Recover(writer io.Writer) {
 //	var buf [22]byte
 //	buf[0] = ':'
 //	b := buf[:]
-//	n := formatinteger(b[1:], l)
+//	n := formatInteger(b[1:], l)
 //	n++
 //	b[n] = ':'
 //	w.Write(b[:n+1])

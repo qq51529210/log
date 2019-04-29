@@ -331,7 +331,14 @@ func Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ... in
 
 func Recover(writer io.Writer, cb func()) {
 	// recover
-	re := recover()
+	RecoverValue(writer, recover())
+	// 回调函数
+	if cb != nil {
+		cb()
+	}
+}
+
+func RecoverValue(writer io.Writer, re interface{}) {
 	if re != nil {
 		// 获取Log
 		l := logPool.Get().(*Log)
@@ -363,10 +370,6 @@ func Recover(writer io.Writer, cb func()) {
 		l.EndLine()
 		writer.Write(l.b)
 		logPool.Put(l)
-	}
-	// 回调函数
-	if cb != nil {
-		cb()
 	}
 }
 

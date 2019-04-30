@@ -329,16 +329,17 @@ func Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ... in
 	return n, e
 }
 
-func Recover(writer io.Writer, cb func()) {
+func Recover(writer io.Writer, cb func()) bool {
 	// recover
-	RecoverValue(writer, recover())
+	o := RecoverValue(writer, recover())
 	// 回调函数
 	if cb != nil {
 		cb()
 	}
+	return o
 }
 
-func RecoverValue(writer io.Writer, re interface{}) {
+func RecoverValue(writer io.Writer, re interface{}) bool {
 	if re != nil {
 		// 获取Log
 		l := logPool.Get().(*Log)
@@ -370,7 +371,9 @@ func RecoverValue(writer io.Writer, re interface{}) {
 		l.EndLine()
 		writer.Write(l.b)
 		logPool.Put(l)
+		return true
 	}
+	return false
 }
 
 type Error struct {

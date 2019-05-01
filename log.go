@@ -269,7 +269,7 @@ func (this *Log) Stack() {
 	i2 := 0
 	n := 0
 	for {
-		this.b = append(this.b, make([]byte, 64)...)
+		this.b = append(this.b, make([]byte, 512)...)
 		n = runtime.Stack(this.b[i1:], false)
 		i2 = i1 + n
 		if i2 < len(this.b) {

@@ -1,6 +1,7 @@
 package log
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"runtime"
@@ -264,7 +265,7 @@ func (this *Log) E(writer io.Writer, fileLine FileLine, log string) (int, error)
 	return this.Print(writer, LevelError, 1, fileLine, log)
 }
 
-func (this *Log) Stack() {
+func (this *Log) Stack(full bool) {
 	i1 := len(this.b)
 	i2 := 0
 	n := 0
@@ -277,6 +278,7 @@ func (this *Log) Stack() {
 			break
 		}
 	}
+	panic_line := false
 	// 简化一下
 	n = i2 - 1
 	m := i1
@@ -290,7 +292,14 @@ func (this *Log) Stack() {
 			for ; i < n; i++ {
 				if this.b[i] == ' ' {
 					i2 = i + 1
-					m += copy(this.b[m:], this.b[i1:i2])
+					// 只要panic之后的行
+					if !full && bytes.Contains(this.b[i1:i2], panicLine) {
+						panic_line = true
+						break
+					}
+					if panic_line {
+						m += copy(this.b[m:], this.b[i1:i2])
+					}
 					break
 				}
 			}
@@ -329,9 +338,10 @@ func Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ... in
 	return n, e
 }
 
-func Recover(writer io.Writer, cb func()) bool {
+// 如果full是false，只会打印panic的之后的行，不会打印完整的堆栈
+func Recover(writer io.Writer, full bool, cb func()) bool {
 	// recover
-	o := RecoverValue(writer, recover())
+	o := RecoverValue(writer, full, recover())
 	// 回调函数
 	if cb != nil {
 		cb()
@@ -339,7 +349,8 @@ func Recover(writer io.Writer, cb func()) bool {
 	return o
 }
 
-func RecoverValue(writer io.Writer, re interface{}) bool {
+// 如果full是false，只会打印panic的之后的行，不会打印完整的堆栈
+func RecoverValue(writer io.Writer, full bool, re interface{}) bool {
 	if re != nil {
 		// 获取Log
 		l := logPool.Get().(*Log)
@@ -366,7 +377,7 @@ func RecoverValue(writer io.Writer, re interface{}) bool {
 			l.String(fmt.Sprint(re))
 			l.Byte(SpaceSeparator)
 			// 不是log.Error，从堆栈找到panic的行
-			l.Stack()
+			l.Stack(full)
 		}
 		l.EndLine()
 		writer.Write(l.b)

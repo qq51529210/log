@@ -233,7 +233,7 @@ func NewFileLogger(cfg *LoggerFileConfig) (*LoggerFile, error) {
 	}
 	// 保存routine
 	go func(this *LoggerFile) {
-		defer Recover(this, func() {
+		defer Recover(this, true, func() {
 			close(this.exit)
 			this.syncTimer.Stop()
 		})

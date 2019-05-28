@@ -81,7 +81,14 @@ func (this *LoggerFile) checkExpired() {
 	// 检查过期的
 	fs, e := ioutil.ReadDir(this.rootDir)
 	if nil != e {
-		os.Stderr.WriteString(e.Error())
+		if os.IsNotExist(e) {
+			e = os.MkdirAll(this.rootDir, os.ModePerm)
+			if nil != e {
+				Print(os.Stderr, LevelError, 0, FileLineFullPath, e.Error())
+			}
+			return
+		}
+		Print(os.Stderr, LevelError, 0, FileLineFullPath, e.Error())
 		return
 	}
 	// 目录数量少
@@ -97,7 +104,7 @@ func (this *LoggerFile) checkExpired() {
 			count--
 			e = os.RemoveAll(filepath.Join(this.rootDir, fs[i].Name()))
 			if nil != e {
-				os.Stderr.WriteString(e.Error())
+				Print(os.Stderr, LevelError, 0, FileLineFullPath, e.Error())
 			}
 		}
 		t, e := time.Parse(this.dayFormat, fs[i].Name())
@@ -106,7 +113,7 @@ func (this *LoggerFile) checkExpired() {
 			count--
 			e = os.RemoveAll(filepath.Join(this.rootDir, fs[i].Name()))
 			if nil != e {
-				os.Stderr.WriteString(e.Error())
+				Print(os.Stderr, LevelError, 0, FileLineFullPath, e.Error())
 			}
 		}
 		// 是日志目录
@@ -128,7 +135,7 @@ func (this *LoggerFile) checkExpired() {
 		t := ele.Value.(*time.Time)
 		e = os.RemoveAll(filepath.Join(this.rootDir, t.Format(this.dayFormat)))
 		if nil != e {
-			os.Stderr.WriteString(e.Error())
+			Print(os.Stderr, LevelError, 0, FileLineFullPath, e.Error())
 		}
 	}
 }
@@ -141,7 +148,7 @@ func (this *LoggerFile) saveFile() {
 		n, e := io.Copy(this.file, &this.buffer)
 		this.curSize += n
 		if e != nil {
-			os.Stderr.WriteString(e.Error())
+			Print(os.Stderr, LevelError, 0, FileLineFullPath, e.Error())
 		}
 		// 写入的数据到达最大，开始新文件
 		if this.curSize >= int64(this.maxSize) {
@@ -161,14 +168,14 @@ func (this *LoggerFile) newFile() {
 	date_dir := filepath.Join(this.rootDir, now.Format(this.dayFormat))
 	e := os.MkdirAll(date_dir, os.ModePerm)
 	if nil != e {
-		os.Stderr.WriteString(e.Error())
+		Print(os.Stderr, LevelError, 1, FileLineFullPath, e.Error())
 		return
 	}
 	// 新的日志文件
 	time_file := filepath.Join(date_dir, now.Format(this.fileFormat))
 	this.file, e = os.OpenFile(time_file, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
 	if nil != e {
-		os.Stderr.WriteString(e.Error())
+		Print(os.Stderr, LevelError, 1, FileLineFullPath, e.Error())
 		return
 	}
 }
@@ -201,15 +208,15 @@ func (this *LoggerFile) Close() error {
 }
 
 // 新的日志文件对象
-func NewFileLogger(cfg *LoggerFileConfig) (*LoggerFile, error) {
+func NewFileLogger(cfg *LoggerFileConfig) *LoggerFile {
 	// 解析配置参数
 	size, e := common.ParseInt(cfg.Size)
 	if nil != e {
-		return nil, e
+		size = 1024 * 1024
 	}
 	dur, e := time.ParseDuration(cfg.Duration)
 	if nil != e {
-		return nil, e
+		dur = time.Second * 3
 	}
 	// 对象
 	lf := &LoggerFile{
@@ -231,6 +238,7 @@ func NewFileLogger(cfg *LoggerFileConfig) (*LoggerFile, error) {
 	if lf.fileFormat == "" {
 		lf.fileFormat = "150405.999999999"
 	}
+	lf.newFile()
 	// 保存routine
 	go func(this *LoggerFile) {
 		defer Recover(this, true, func() {
@@ -248,5 +256,5 @@ func NewFileLogger(cfg *LoggerFileConfig) (*LoggerFile, error) {
 		}
 	}(lf)
 
-	return lf, nil
+	return lf
 }

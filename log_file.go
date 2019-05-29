@@ -194,16 +194,16 @@ func (this *LoggerFile) Close() error {
 	this.mutex.Lock()
 	if this.closed {
 		this.mutex.Unlock()
-		return errors.New("file has been closed")
+		return errors.New("logger has been closed")
 	}
 	this.closed = true
 	this.mutex.Unlock()
 	// 退出
 	this.syncTimer.Reset(0)
-	// 关闭文件
-	this.closeFile()
 	// 等待routine退出
 	<-this.exit
+	// 关闭文件
+	this.closeFile()
 	return nil
 }
 
@@ -242,8 +242,8 @@ func NewFileLogger(cfg *LoggerFileConfig) *LoggerFile {
 	// 保存routine
 	go func(this *LoggerFile) {
 		defer Recover(this, true, func() {
-			close(this.exit)
 			this.syncTimer.Stop()
+			close(this.exit)
 		})
 		this.syncTimer = time.NewTimer(this.duration)
 		for !this.closed {

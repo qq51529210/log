@@ -9,7 +9,8 @@ type LoggerStd struct {
 	fileLine FileLine
 }
 
-func NewLoggerStd(writer io.Writer, level Level, fileLine FileLine, skip int) *LoggerStd {
+// skip 一般是3
+func NewLoggerStd(writer io.Writer, level Level, skip int, fileLine FileLine) *LoggerStd {
 	return &LoggerStd{
 		writer:   writer,
 		level:    level,

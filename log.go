@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -218,6 +219,16 @@ func (this *Log) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
+func (this *Log) PrintBytes(writer io.Writer, level Level, skip int, fileLine FileLine, log []byte) (int, error) {
+	this.Reset()
+	this.DateTime(6)
+	this.Level(level)
+	this.FilePathLine(skip+1, fileLine)
+	this.b = append(this.b, log...)
+	this.EndLine()
+	return writer.Write(this.b)
+}
+
 func (this *Log) Print(writer io.Writer, level Level, skip int, fileLine FileLine, log string) (int, error) {
 	this.Reset()
 	this.DateTime(6)
@@ -233,7 +244,6 @@ func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLi
 	this.DateTime(6)
 	this.Level(level)
 	this.FilePathLine(skip+1, fileLine)
-	//this.String(fmt.Sprintf(format,a...))
 	fmt.Fprintf(this, format, a...)
 	this.EndLine()
 	return writer.Write(this.b)
@@ -450,4 +460,30 @@ func newError(skip int, log string) error {
 	}
 	e.Log = log
 	return e
+}
+
+var (
+	defaultWriter io.Writer = os.Stdout
+)
+
+func SetDefaultWriter(w io.Writer) {
+	if nil != w {
+		defaultWriter = w
+	}
+}
+
+func DLog(a ... interface{}) {
+	Sprint(os.Stderr, LevelDebug, 1, FileLineFullPath, a...)
+}
+
+func ILog(a ... interface{}) {
+	Sprint(os.Stderr, LevelInfo, 1, FileLineFullPath, a...)
+}
+
+func WLog(a ... interface{}) {
+	Sprint(os.Stderr, LevelWarn, 1, FileLineFullPath, a...)
+}
+
+func ELog(a ... interface{}) {
+	Sprint(os.Stderr, LevelError, 1, FileLineFullPath, a...)
 }

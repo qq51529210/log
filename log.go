@@ -47,7 +47,7 @@ func init() {
 		return &Log{}
 	}
 	errPool.New = func() interface{} {
-		return &Error{}
+		return &panicError{}
 	}
 }
 
@@ -395,7 +395,7 @@ func RecoverValue(writer io.Writer, full, line bool, re interface{}) bool {
 		// 获取Log
 		l := logPool.Get().(*Log)
 		l.Reset()
-		if e, o := re.(*Error); o {
+		if e, o := re.(*panicError); o {
 			// 时间
 			l.DateTime(6)
 			// 级别，recover
@@ -427,13 +427,13 @@ func RecoverValue(writer io.Writer, full, line bool, re interface{}) bool {
 	return false
 }
 
-type Error struct {
+type panicError struct {
 	File string // 文件路径
 	Line int    // 文件行
 	Log  string // 信息
 }
 
-func (this *Error) Error() string {
+func (this *panicError) Error() string {
 	return this.Log
 }
 
@@ -449,7 +449,7 @@ func CheckError(e error) {
 
 func newError(skip int, log string) error {
 	// 获取Error
-	e := errPool.Get().(*Error)
+	e := errPool.Get().(*panicError)
 	_, f, l, o := runtime.Caller(skip + 1)
 	if o {
 		e.File = f
@@ -472,18 +472,18 @@ func SetDefaultWriter(w io.Writer) {
 	}
 }
 
-func DLog(a ... interface{}) {
+func Debug(a ... interface{}) {
 	Sprint(os.Stderr, LevelDebug, 1, FileLineFullPath, a...)
 }
 
-func ILog(a ... interface{}) {
+func Info(a ... interface{}) {
 	Sprint(os.Stderr, LevelInfo, 1, FileLineFullPath, a...)
 }
 
-func WLog(a ... interface{}) {
+func Warning(a ... interface{}) {
 	Sprint(os.Stderr, LevelWarn, 1, FileLineFullPath, a...)
 }
 
-func ELog(a ... interface{}) {
+func Error(a ... interface{}) {
 	Sprint(os.Stderr, LevelError, 1, FileLineFullPath, a...)
 }

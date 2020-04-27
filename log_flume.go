@@ -1,6 +1,6 @@
 package log
 
-// flume日志
+// flume日志，没有实现
 type LoggerFlume struct {
 	rootDir string
 }

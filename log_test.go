@@ -13,12 +13,16 @@ var (
 )
 
 func TestPanic(t *testing.T) {
-	defer Recover(os.Stderr, nil)
+	defer Recover(os.Stderr, true, true, func() {
+
+	})
 	Panic("test panic")
 }
 
 func TestPanicStd(t *testing.T) {
-	defer Recover(os.Stderr, nil)
+	defer Recover(os.Stderr, true, true, func() {
+
+	})
 	panic("test std panic")
 }
 
@@ -135,12 +139,16 @@ func Benchmark_fmt_Log(b *testing.B) {
 }
 
 func testPanicStd(w io.Writer) {
-	defer Recover(w, nil)
+	defer Recover(w, true, true, func() {
+
+	})
 	panic("test std panic")
 }
 
 func testPanic(w io.Writer) {
-	defer Recover(w, nil)
+	defer Recover(w, true, true, func() {
+
+	})
 	Panic("test std panic")
 }
 

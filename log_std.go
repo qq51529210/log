@@ -2,6 +2,7 @@ package log
 
 import "io"
 
+// 接管标准库log.Logger的输出
 type LoggerStd struct {
 	writer   io.Writer
 	level    Level

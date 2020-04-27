@@ -4,18 +4,18 @@ import (
 	"bytes"
 	"container/list"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/qq51529210/common"
 )
 
-// 配置
+// 配置，文件日志
 type LoggerFileConfig struct {
 	Dir        string `json:"dir"`         // 根目录
 	Size       string `json:"size"`        // 每个文件的大小
@@ -210,7 +210,7 @@ func (this *LoggerFile) Close() error {
 // 新的日志文件对象
 func NewFileLogger(cfg *LoggerFileConfig) *LoggerFile {
 	// 解析配置参数
-	size, e := common.ParseInt(cfg.Size)
+	size, e := parseByteUnit(cfg.Size)
 	if nil != e {
 		size = 1024 * 1024
 	}
@@ -222,9 +222,9 @@ func NewFileLogger(cfg *LoggerFileConfig) *LoggerFile {
 	lf := &LoggerFile{
 		rootDir:    cfg.Dir,
 		exit:       make(chan struct{}),
-		maxDay:     common.MaxInt(cfg.Day, 1),
-		maxSize:    common.MaxInt(int(size), 1024*1024),
-		duration:   common.MaxDuration(dur, time.Second),
+		maxDay:     maxInt(cfg.Day, 1),
+		maxSize:    maxInt(int(size), 1024*1024),
+		duration:   maxDuration(dur, time.Second),
 		dayFormat:  cfg.DayFormat,
 		fileFormat: cfg.FileFormat,
 	}
@@ -257,4 +257,71 @@ func NewFileLogger(cfg *LoggerFileConfig) *LoggerFile {
 	}(lf)
 
 	return lf
+}
+
+const (
+	KBits = 1024
+	MBits = 1024 * KBits
+	GBits = 1024 * MBits
+	TBits = 1024 * GBits
+
+	KBytes = 1024
+	MBytes = 1024 * KBytes
+	GBytes = 1024 * MBytes
+	TBytes = 1024 * GBytes
+)
+
+// 解析2KB,3M,4G,5T，这样的到数值
+func parseByteUnit(s string) (uint64, error) {
+	for i := len(s) - 1; i >= 0; i-- {
+		switch s[i] {
+		case 'B', 'b':
+			v, e := strconv.ParseFloat(s[:i], 64)
+			if nil != e {
+				return 0, e
+			}
+			return uint64(v), nil
+		case 'K', 'k':
+			v, e := strconv.ParseFloat(s[:i], 64)
+			if nil != e {
+				return 0, e
+			}
+			return uint64(v * KBytes), nil
+		case 'M', 'm':
+			v, e := strconv.ParseFloat(s[:i], 64)
+			if nil != e {
+				return 0, e
+			}
+			return uint64(v * MBytes), nil
+		case 'G', 'g':
+			v, e := strconv.ParseFloat(s[:i], 64)
+			if nil != e {
+				return 0, e
+			}
+			return uint64(v * GBytes), nil
+		case 'T', 't':
+			v, e := strconv.ParseFloat(s[:i], 64)
+			if nil != e {
+				return 0, e
+			}
+			return uint64(v * TBytes), nil
+		default:
+			return 0, errors.New(fmt.Sprintf("invalid input %v", s))
+		}
+	}
+	return 0, nil
+}
+
+func maxInt(d1, d2 int) int {
+	if d1 > d2 {
+		return d1
+	}
+	return d2
+}
+
+func maxDuration(d1, d2 time.Duration) time.Duration {
+	if d1 > d2 {
+		return d1
+	}
+	return d2
 }

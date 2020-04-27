@@ -1,6 +1,6 @@
 package log
 
-// kafka日志
+// kafka日志，没有实现
 type LoggerKafka struct {
 	rootDir string
 }

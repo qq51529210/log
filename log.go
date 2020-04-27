@@ -24,24 +24,26 @@ const (
 type FileLine byte
 
 const (
-	FileLineDisable  FileLine = iota
-	FileLineFullPath
-	FileLineName
+	FileLineDisable  FileLine = iota // 禁用打印堆栈信息
+	FileLineFullPath                 // 打印堆栈信息,
+	FileLineName                     // 打印文件名称而不是文件的完整路径
 )
 
+// year-month-day hour:minute:second.nano，日期时间格式，分隔符可替换
 var (
-	logPool                = sync.Pool{}
-	errPool                = sync.Pool{}
-	SpaceSeparator    byte = ' ' // 空格
-	DateSeparator     byte = '-' // 日期
-	TimeSeparator     byte = ':' // 时间
-	NanoSecSeparator  byte = '.' // 纳秒
-	FileLineSeparator byte = ':' // 堆栈
-	NanoSecLength          = 6   // 打印纳秒的长度
-	unknownFileLine        = []byte("???:-1:")
-	panicLine              = []byte("/runtime/panic.go")
+	logPool                = sync.Pool{}                 // Log{}缓存
+	errPool                = sync.Pool{}                 // panicError{}缓存
+	SpaceSeparator    byte = ' '                         // 空格
+	DateSeparator     byte = '-'                         // 日期
+	TimeSeparator     byte = ':'                         // 时间
+	NanoSecSeparator  byte = '.'                         // 纳秒
+	FileLineSeparator byte = ':'                         // 堆栈
+	NanoSecLength          = 6                           // 打印纳秒的长度
+	unknownFileLine        = []byte("???:-1:")           // 获取堆栈失败时使用
+	panicLine              = []byte("/runtime/panic.go") // 获取panic堆栈判断（只获取panic那行）
 )
 
+// 缓存池的new函数
 func init() {
 	logPool.New = func() interface{} {
 		return &Log{}
@@ -51,18 +53,34 @@ func init() {
 	}
 }
 
+// 表示一行日志
 type Log struct {
-	b []byte
+	b []byte // 缓存
 }
 
+// 重置缓存
 func (this *Log) Reset() {
-	this.b = this.b[0:0]
+	this.b = this.b[:0]
 }
 
+// 返回缓存
 func (this *Log) Bytes() []byte {
 	return this.b
 }
 
+// io.WriteTo接口
+func (this *Log) WriteTo(writer io.Writer) (int64, error) {
+	// 写入writer
+	n, err := writer.Write(this.b)
+	if err != nil {
+		return 0, err
+	}
+	// 重置
+	this.Reset()
+	return int64(n), err
+}
+
+// 整数不满length，右边补0。0012-08-02 04:03:05.123000
 func (this *Log) IntegerAlignRight(value, length int) {
 	// 值是倒转的
 	i1 := len(this.b)
@@ -95,6 +113,7 @@ func (this *Log) IntegerAlignRight(value, length int) {
 	}
 }
 
+// 整数不满length，左边补0。0012-08-02 04:03:05
 func (this *Log) IntegerAlignLeft(value, length int) {
 	// 值是倒转的
 	i1 := len(this.b)
@@ -124,6 +143,7 @@ func (this *Log) IntegerAlignLeft(value, length int) {
 	}
 }
 
+// 写入整数value
 func (this *Log) Integer(value int) {
 	i1 := len(this.b)
 	for {
@@ -144,14 +164,17 @@ func (this *Log) Integer(value int) {
 	}
 }
 
+// 写入一个字符c
 func (this *Log) Byte(c byte) {
 	this.b = append(this.b, c)
 }
 
+// 写入换行'\n'
 func (this *Log) EndLine() {
 	this.b = append(this.b, '\n')
 }
 
+// 写入日期时间（year-month-day hour:minute:second.nano），nsec表示保留纳秒的位数
 func (this *Log) DateTime(nsec int) {
 	date_time := time.Now()
 	year, month, day := date_time.Date()
@@ -179,11 +202,13 @@ func (this *Log) DateTime(nsec int) {
 	this.b = append(this.b, SpaceSeparator)
 }
 
+// 写入日志级别
 func (this *Log) Level(level Level) {
 	this.b = append(this.b, byte(level))
 	this.b = append(this.b, SpaceSeparator)
 }
 
+// 写入堆栈信息
 func (this *Log) FilePathLine(skip int, fileLine FileLine) {
 	if fileLine != FileLineDisable {
 		_, f, l, o := runtime.Caller(skip + 1)
@@ -210,10 +235,12 @@ func (this *Log) FilePathLine(skip int, fileLine FileLine) {
 	this.b = append(this.b, SpaceSeparator)
 }
 
+// 写入字符串
 func (this *Log) String(s string) {
 	this.b = append(this.b, s...)
 }
 
+// 写入数据
 func (this *Log) Write(b []byte) (int, error) {
 	this.b = append(this.b, b...)
 	return len(b), nil
@@ -239,7 +266,7 @@ func (this *Log) Print(writer io.Writer, level Level, skip int, fileLine FileLin
 	return writer.Write(this.b)
 }
 
-func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format string, a ... interface{}) (int, error) {
+func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format string, a ...interface{}) (int, error) {
 	this.Reset()
 	this.DateTime(6)
 	this.Level(level)
@@ -249,7 +276,7 @@ func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLi
 	return writer.Write(this.b)
 }
 
-func (this *Log) Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ... interface{}) (int, error) {
+func (this *Log) Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ...interface{}) (int, error) {
 	this.Reset()
 	this.DateTime(6)
 	this.Level(level)
@@ -275,6 +302,7 @@ func (this *Log) E(writer io.Writer, fileLine FileLine, log string) (int, error)
 	return this.Print(writer, LevelError, 1, fileLine, log)
 }
 
+// 写入堆栈信息，full是runtime.Stack的参数，line表示只取panic的那一行
 func (this *Log) Stack(full, line bool) {
 	i1 := len(this.b)
 	i2 := 0
@@ -334,14 +362,17 @@ Loop:
 	this.b = this.b[:m]
 }
 
+// 从缓存中获取Log{}
 func Get() *Log {
 	return logPool.Get().(*Log)
 }
 
+// Log{}返回缓存中
 func Put(l *Log) {
 	logPool.Put(l)
 }
 
+// 打印
 func Print(writer io.Writer, level Level, skip int, fileLine FileLine, log string) (int, error) {
 	l := logPool.Get().(*Log)
 	n, e := l.Print(writer, level, skip+1, fileLine, log)
@@ -349,14 +380,16 @@ func Print(writer io.Writer, level Level, skip int, fileLine FileLine, log strin
 	return n, e
 }
 
-func Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format string, a ... interface{}) (int, error) {
+// 格式化输出
+func Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format string, a ...interface{}) (int, error) {
 	l := logPool.Get().(*Log)
 	n, e := l.Printf(writer, level, skip+1, fileLine, format, a...)
 	logPool.Put(l)
 	return n, e
 }
 
-func Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ... interface{}) (int, error) {
+// 格式化输出
+func Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ...interface{}) (int, error) {
 	l := logPool.Get().(*Log)
 	n, e := l.Sprint(writer, level, skip+1, fileLine, a...)
 	logPool.Put(l)
@@ -416,7 +449,7 @@ func RecoverValue(writer io.Writer, full, line bool, re interface{}) bool {
 			// 信息
 			l.String(fmt.Sprint(re))
 			l.Byte(SpaceSeparator)
-			// 不是log.Error，从堆栈找到panic的行
+			// 不是panicError，从堆栈找到panic的行
 			l.Stack(full, line)
 		}
 		l.EndLine()
@@ -437,16 +470,19 @@ func (this *panicError) Error() string {
 	return this.Log
 }
 
+// 直接panic
 func Panic(log string) {
 	panic(newError(1, log))
 }
 
+// 检查错误，直接panic
 func CheckError(e error) {
 	if e != nil {
 		panic(newError(1, e.Error()))
 	}
 }
 
+// 返回panicError{}，带有当前的堆栈信息，提高性能
 func newError(skip int, log string) error {
 	// 获取Error
 	e := errPool.Get().(*panicError)
@@ -462,28 +498,32 @@ func newError(skip int, log string) error {
 	return e
 }
 
-var (
-	defaultWriter io.Writer = os.Stdout
-)
+// 默认的输出writer
+var defaultWriter io.Writer = os.Stdout
 
+// 设置默认的输出writer
 func SetDefaultWriter(w io.Writer) {
 	if nil != w {
 		defaultWriter = w
 	}
 }
 
-func Debug(a ... interface{}) {
+// 简洁的Debug
+func Debug(a ...interface{}) {
 	Sprint(os.Stderr, LevelDebug, 1, FileLineFullPath, a...)
 }
 
-func Info(a ... interface{}) {
+// 简洁的Info
+func Info(a ...interface{}) {
 	Sprint(os.Stderr, LevelInfo, 1, FileLineFullPath, a...)
 }
 
-func Warning(a ... interface{}) {
+// 简洁的Warn
+func Warn(a ...interface{}) {
 	Sprint(os.Stderr, LevelWarn, 1, FileLineFullPath, a...)
 }
 
-func Error(a ... interface{}) {
+// 简洁的Error
+func Error(a ...interface{}) {
 	Sprint(os.Stderr, LevelError, 1, FileLineFullPath, a...)
 }

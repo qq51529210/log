@@ -126,13 +126,12 @@ func (this *Log) IntegerAlignLeft(value, length int) {
 		length--
 	}
 	// 继续在后面补0
-	i2 := len(this.b) - i1
-	for length > i2 {
+	for length > 1 {
 		this.b = append(this.b, byte('0'))
 		length--
 	}
 	// 反转
-	i2 = len(this.b) - 1
+	i2 := len(this.b) - 1
 	c := byte(0)
 	for i1 < i2 {
 		c = this.b[i1]
@@ -364,7 +363,9 @@ Loop:
 
 // 从缓存中获取Log{}
 func Get() *Log {
-	return logPool.Get().(*Log)
+	p := logPool.Get().(*Log)
+	p.Reset()
+	return p
 }
 
 // Log{}返回缓存中

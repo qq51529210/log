@@ -301,8 +301,8 @@ func (this *Log) E(writer io.Writer, fileLine FileLine, log string) (int, error)
 	return this.Print(writer, LevelError, 1, fileLine, log)
 }
 
-// 写入堆栈信息，full是runtime.Stack的参数，line表示只取panic的那一行
-func (this *Log) Stack(full, line bool) {
+// 写入堆栈信息，full表示是否整个堆栈，或者只取panic的那一行
+func (this *Log) Stack(full bool) {
 	i1 := len(this.b)
 	i2 := 0
 	n := 0
@@ -333,7 +333,7 @@ Loop:
 					// 路径结束
 					i2 = i + 1
 					// 只要一行
-					if line {
+					if !full {
 						if !panic_line {
 							panic_line = bytes.Contains(this.b[i1:i2], panicLine)
 						} else {
@@ -401,14 +401,13 @@ func Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ...int
 // 函数内部会调用recover()
 // 参数
 // writer: 输出
-// full: 输出所有的堆栈，或者只输出panic之后的
-// line: 只输出发生panic的那一行，line为true，full无效
+// full: 输出所有的堆栈，或者只输出发生panic的那一行
 // cb: 输出完后回调
 // 返回
 // 是否发生的panic
-func Recover(writer io.Writer, full, line bool, cb func()) bool {
+func Recover(writer io.Writer, full bool, cb func()) bool {
 	// recover
-	o := RecoverValue(writer, full, line, recover())
+	o := RecoverValue(writer, full, recover())
 	// 回调函数
 	if cb != nil {
 		cb()
@@ -419,12 +418,11 @@ func Recover(writer io.Writer, full, line bool, cb func()) bool {
 // 只输出panic的堆栈的路径，其他堆栈信息不输出
 // 参数
 // writer: 输出
-// full: 输出所有的堆栈，或者只输出panic之后的
-// line: 只输出发生panic的那一行，line为true，full无效
+// full: 输出所有的堆栈，或者只输出发生panic的那一行
 // re: 在函数外调用recover()的值
 // 返回
 // 是否发生的panic
-func RecoverValue(writer io.Writer, full, line bool, re interface{}) bool {
+func RecoverValue(writer io.Writer, full bool, re interface{}) bool {
 	if re != nil {
 		// 获取Log
 		l := logPool.Get().(*Log)
@@ -451,7 +449,7 @@ func RecoverValue(writer io.Writer, full, line bool, re interface{}) bool {
 			l.String(fmt.Sprint(re))
 			l.Byte(SpaceSeparator)
 			// 不是panicError，从堆栈找到panic的行
-			l.Stack(full, line)
+			l.Stack(full)
 		}
 		l.EndLine()
 		writer.Write(l.b)

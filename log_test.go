@@ -123,6 +123,17 @@ func TestLog_String(t *testing.T) {
 	}
 }
 
+func TestLog_Stack(t *testing.T) {
+	l := Get()
+	defer func() {
+		recover()
+		l.Stack(false)
+		t.Log(string(l.b))
+		defer Put(l)
+	}()
+	panic("123")
+}
+
 func Test_Panic(t *testing.T) {
 	defer func() {
 		re := recover()

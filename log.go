@@ -53,9 +53,17 @@ func init() {
 	}
 }
 
+type PrintInfo struct {
+	Writer   io.Writer
+	Level    Level
+	Skip     int
+	FileLine FileLine
+}
+
 // 表示一行日志
 type Log struct {
-	b []byte // 缓存
+	b    []byte // 缓存
+	Info PrintInfo
 }
 
 // 重置缓存
@@ -229,8 +237,8 @@ func (this *Log) FilePathLine(skip int, fileLine FileLine) {
 				this.Integer(l)
 			}
 		}
+		this.b = append(this.b, FileLineSeparator)
 	}
-	this.b = append(this.b, FileLineSeparator)
 	this.b = append(this.b, SpaceSeparator)
 }
 
@@ -245,60 +253,68 @@ func (this *Log) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func (this *Log) PrintBytes(writer io.Writer, level Level, skip int, fileLine FileLine, log []byte) (int, error) {
+func (this *Log) PrintBytes(log []byte) (int, error) {
 	this.Reset()
 	this.DateTime(6)
-	this.Level(level)
-	this.FilePathLine(skip+1, fileLine)
+	this.Level(this.Info.Level)
+	this.FilePathLine(this.Info.Skip+1, this.Info.FileLine)
 	this.b = append(this.b, log...)
 	this.EndLine()
-	return writer.Write(this.b)
+	return this.Info.Writer.Write(this.b)
 }
 
-func (this *Log) Print(writer io.Writer, level Level, skip int, fileLine FileLine, log string) (int, error) {
+func (this *Log) Print(log string) (int, error) {
 	this.Reset()
 	this.DateTime(6)
-	this.Level(level)
-	this.FilePathLine(skip+1, fileLine)
+	this.Level(this.Info.Level)
+	this.FilePathLine(this.Info.Skip+1, this.Info.FileLine)
 	this.String(log)
 	this.EndLine()
-	return writer.Write(this.b)
+	return this.Info.Writer.Write(this.b)
 }
 
-func (this *Log) Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format string, a ...interface{}) (int, error) {
+func (this *Log) Printf(format string, a ...interface{}) (int, error) {
 	this.Reset()
 	this.DateTime(6)
-	this.Level(level)
-	this.FilePathLine(skip+1, fileLine)
+	this.Level(this.Info.Level)
+	this.FilePathLine(this.Info.Skip+1, this.Info.FileLine)
 	fmt.Fprintf(this, format, a...)
 	this.EndLine()
-	return writer.Write(this.b)
+	return this.Info.Writer.Write(this.b)
 }
 
-func (this *Log) Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ...interface{}) (int, error) {
+func (this *Log) Sprint(a ...interface{}) (int, error) {
 	this.Reset()
 	this.DateTime(6)
-	this.Level(level)
-	this.FilePathLine(skip+1, fileLine)
+	this.Level(this.Info.Level)
+	this.FilePathLine(this.Info.Skip+1, this.Info.FileLine)
 	fmt.Fprint(this, a...)
 	this.EndLine()
-	return writer.Write(this.b)
+	return this.Info.Writer.Write(this.b)
 }
 
-func (this *Log) D(writer io.Writer, fileLine FileLine, log string) (int, error) {
-	return this.Print(writer, LevelDebug, 1, fileLine, log)
+func (this *Log) D(log string) (int, error) {
+	this.Info.Level = LevelDebug
+	this.Info.Skip = 1
+	return this.Print(log)
 }
 
-func (this *Log) I(writer io.Writer, fileLine FileLine, log string) (int, error) {
-	return this.Print(writer, LevelInfo, 1, fileLine, log)
+func (this *Log) I(log string) (int, error) {
+	this.Info.Level = LevelInfo
+	this.Info.Skip = 1
+	return this.Print(log)
 }
 
-func (this *Log) W(writer io.Writer, fileLine FileLine, log string) (int, error) {
-	return this.Print(writer, LevelWarn, 1, fileLine, log)
+func (this *Log) W(log string) (int, error) {
+	this.Info.Level = LevelWarn
+	this.Info.Skip = 1
+	return this.Print(log)
 }
 
-func (this *Log) E(writer io.Writer, fileLine FileLine, log string) (int, error) {
-	return this.Print(writer, LevelError, 1, fileLine, log)
+func (this *Log) E(log string) (int, error) {
+	this.Info.Level = LevelError
+	this.Info.Skip = 1
+	return this.Print(log)
 }
 
 // 写入堆栈信息，full表示是否整个堆栈，或者只取panic的那一行
@@ -363,9 +379,10 @@ Loop:
 
 // 从缓存中获取Log{}
 func Get() *Log {
-	p := logPool.Get().(*Log)
-	p.Reset()
-	return p
+	//p := logPool.Get().(*Log)
+	//p.Reset()
+	//return p
+	return logPool.Get().(*Log)
 }
 
 // Log{}返回缓存中
@@ -376,7 +393,11 @@ func Put(l *Log) {
 // 打印
 func Print(writer io.Writer, level Level, skip int, fileLine FileLine, log string) (int, error) {
 	l := logPool.Get().(*Log)
-	n, e := l.Print(writer, level, skip+1, fileLine, log)
+	l.Info.Writer = writer
+	l.Info.Skip = skip + 1
+	l.Info.Level = level
+	l.Info.FileLine = fileLine
+	n, e := l.Print(log)
 	logPool.Put(l)
 	return n, e
 }
@@ -384,7 +405,11 @@ func Print(writer io.Writer, level Level, skip int, fileLine FileLine, log strin
 // 格式化输出
 func Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format string, a ...interface{}) (int, error) {
 	l := logPool.Get().(*Log)
-	n, e := l.Printf(writer, level, skip+1, fileLine, format, a...)
+	l.Info.Writer = writer
+	l.Info.Skip = skip + 1
+	l.Info.Level = level
+	l.Info.FileLine = fileLine
+	n, e := l.Printf(format, a...)
 	logPool.Put(l)
 	return n, e
 }
@@ -392,7 +417,11 @@ func Printf(writer io.Writer, level Level, skip int, fileLine FileLine, format s
 // 格式化输出
 func Sprint(writer io.Writer, level Level, skip int, fileLine FileLine, a ...interface{}) (int, error) {
 	l := logPool.Get().(*Log)
-	n, e := l.Sprint(writer, level, skip+1, fileLine, a...)
+	l.Info.Writer = writer
+	l.Info.Skip = skip + 1
+	l.Info.Level = level
+	l.Info.FileLine = fileLine
+	n, e := l.Sprint(a...)
 	logPool.Put(l)
 	return n, e
 }

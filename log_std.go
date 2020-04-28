@@ -29,8 +29,12 @@ func (this *LoggerStd) Write(b []byte) (n int, e error) {
 		n--
 	}
 	l := logPool.Get().(*Log)
+	l.Info.Writer = this.writer
+	l.Info.Level = this.level
+	l.Info.Skip = this.skip
+	l.Info.FileLine = this.fileLine
 	// n-1是因为有个\n
-	n, e = l.PrintBytes(this.writer, this.level, this.skip, this.fileLine, b[:n])
+	n, e = l.PrintBytes(b[:n])
 	logPool.Put(l)
 	return
 }

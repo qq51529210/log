@@ -402,23 +402,23 @@ func Sprint(l Level, c int, a ...interface{}) (int, error) {
 }
 
 // 简洁的Debug
-func Debug(a ...interface{}) {
-	_, _ = Sprint(LevelDebug, 1, a...)
+func Debug(c int, a ...interface{}) {
+	_, _ = Sprint(LevelDebug, c+1, a...)
 }
 
 // 简洁的Info
-func Info(a ...interface{}) {
-	_, _ = Sprint(LevelInfo, 1, a...)
+func Info(c int, a ...interface{}) {
+	_, _ = Sprint(LevelInfo, c+1, a...)
 }
 
 // 简洁的Warn
-func Warn(a ...interface{}) {
-	_, _ = Sprint(LevelWarn, 1, a...)
+func Warn(c int, a ...interface{}) {
+	_, _ = Sprint(LevelWarn, c+1, a...)
 }
 
 // 简洁的Error
-func Error(a ...interface{}) {
-	_, _ = Sprint(LevelError, 1, a...)
+func Error(c int, a ...interface{}) {
+	_, _ = Sprint(LevelError, c+1, a...)
 }
 
 // 设置默认的输出writer

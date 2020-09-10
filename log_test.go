@@ -166,7 +166,7 @@ func Benchmark_LoggerPrint(b *testing.B) {
 	w := bytes.Buffer{}
 	for i := 0; i < b.N; i++ {
 		l.Reset()
-		_, _ = l.Print(&w, LevelDebug, StackInfoDisable, "test", 0)
+		_, _ = l.Print(&w, LevelDebug, StackInfoDisable, 0, "test")
 		w.Reset()
 	}
 }

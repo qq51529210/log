@@ -2,193 +2,176 @@ package log
 
 import (
 	"bytes"
-	"errors"
 	"log"
+	"path/filepath"
+	"strconv"
 	"testing"
+	"time"
 )
 
+var l = new(Logger)
+
 func TestLog_Reset(t *testing.T) {
-	l := Get()
 	l.Reset()
-	defer Put(l)
-	l.String("123")
+	l.WriteString("123")
 	l.Reset()
 	if len(l.b) > 0 {
 		t.FailNow()
 	}
 }
 
-func TestLog_IntegerAlignLeft(t *testing.T) {
-	l := Get()
+func TestLog_WriteByte(t *testing.T) {
 	l.Reset()
-	defer Put(l)
-	l.IntegerAlignLeft(123, 7)
-	if string(l.b) != "0000123" {
-		t.FailNow()
-	}
-}
-
-func TestLog_IntegerAlignRight(t *testing.T) {
-	l := Get()
-	l.Reset()
-	defer Put(l)
-	l.IntegerAlignRight(123, 6)
-	if string(l.b) != "123000" {
-		t.FailNow()
-	}
-}
-
-func TestLog_Integer(t *testing.T) {
-	l := Get()
-	l.Reset()
-	defer Put(l)
-	l.Integer(123)
-	if string(l.b) != "123" {
-		t.FailNow()
-	}
-}
-
-func TestLog_Byte(t *testing.T) {
-	l := Get()
-	l.Reset()
-	defer Put(l)
-	l.Byte('a')
+	l.WriteByte('a')
 	if l.b[0] != 'a' {
 		t.FailNow()
 	}
 }
 
-func TestLog_EndLine(t *testing.T) {
-	l := Get()
+func TestLog_WriteEndLine(t *testing.T) {
 	l.Reset()
-	defer Put(l)
-	l.EndLine()
+	l.WriteEndLine()
 	if l.b[0] != '\n' {
 		t.FailNow()
 	}
 }
 
-func TestLog_DateTime(t *testing.T) {
-	l := Get()
+func TestLog_WriteInt(t *testing.T) {
 	l.Reset()
-	defer Put(l)
-	l.DateTime(9)
-	t.Log(string(l.b))
-}
+	l.WriteInt(123)
+	if string(l.b) != "123" {
+		t.FailNow()
+	}
 
-func TestLog_Level(t *testing.T) {
-	l := Get()
 	l.Reset()
-	defer Put(l)
-	l.Level(LevelDebug)
-	if l.b[0] != 'D' {
-		t.FailNow()
-	}
-	l.Reset()
-	l.Level(LevelInfo)
-	if l.b[0] != 'I' {
-		t.FailNow()
-	}
-	l.Reset()
-	l.Level(LevelWarn)
-	if l.b[0] != 'W' {
-		t.FailNow()
-	}
-	l.Reset()
-	l.Level(LevelError)
-	if l.b[0] != 'E' {
-		t.FailNow()
-	}
-	l.Reset()
-	l.Level(LevelPanic)
-	if l.b[0] != 'P' {
-		t.FailNow()
-	}
-	l.Reset()
-	l.Level(LevelRecover)
-	if l.b[0] != 'R' {
+	l.WriteInt(-123)
+	if string(l.b) != "-123" {
 		t.FailNow()
 	}
 }
 
-func TestLog_FilePathLine(t *testing.T) {
-	l := Get()
+func TestLog_WriteIntL0(t *testing.T) {
 	l.Reset()
-	defer Put(l)
-	l.FilePathLine(1, FileLineDisable)
-	t.Log(string(l.b))
+	l.WriteIntL0(123, 7)
+	if string(l.b) != "0000123" {
+		t.FailNow()
+	}
 	l.Reset()
-	l.FilePathLine(1, FileLineFullPath)
-	t.Log(string(l.b))
-	l.Reset()
-	l.FilePathLine(1, FileLineName)
-	t.Log(string(l.b))
+	l.WriteIntL0(-123, 7)
+	if string(l.b) != "-0000123" {
+		t.FailNow()
+	}
 }
 
-func TestLog_String(t *testing.T) {
-	l := Get()
+func TestLog_WriteIntR0(t *testing.T) {
 	l.Reset()
-	defer Put(l)
-	l.String("123")
+	l.WriteIntR0(123, 6)
+	if string(l.b) != "123000" {
+		t.FailNow()
+	}
+	l.Reset()
+	l.WriteIntR0(-123, 6)
+	if string(l.b) != "-123000" {
+		t.FailNow()
+	}
+}
+
+func TestLog_WriteDateTime(t *testing.T) {
+	l.Reset()
+	tm := time.Date(20, 1, 12, 2, 30, 20, 123456789, time.Local)
+	l.WriteDateTime(&tm)
+	if string(l.b) != "0020-01-12 02:30:20.123456" {
+		t.FailNow()
+	}
+}
+
+func TestLog_WriteLevel(t *testing.T) {
+	l.Reset()
+	l.WriteLevel(LevelDebug)
+	if l.b[0] != byte(LevelDebug) {
+		t.FailNow()
+	}
+	l.Reset()
+	l.WriteLevel(LevelInfo)
+	if l.b[0] != byte(LevelInfo) {
+		t.FailNow()
+	}
+	l.Reset()
+	l.WriteLevel(LevelWarn)
+	if l.b[0] != byte(LevelWarn) {
+		t.FailNow()
+	}
+	l.Reset()
+	l.WriteLevel(LevelError)
+	if l.b[0] != byte(LevelError) {
+		t.FailNow()
+	}
+	l.Reset()
+	l.WriteLevel(LevelPanic)
+	if l.b[0] != byte(LevelPanic) {
+		t.FailNow()
+	}
+	l.Reset()
+	l.WriteLevel(LevelRecover)
+	if l.b[0] != byte(LevelRecover) {
+		t.FailNow()
+	}
+}
+
+func TestLog_WriteStack(t *testing.T) {
+	f := "/project/main.go"
+	ln := 123
+	l.Reset()
+	l.WriteStackFile(f, ln)
+	_, ff := filepath.Split(f)
+	if string(l.b) != ff+":"+strconv.Itoa(ln) {
+		t.FailNow()
+	}
+	l.Reset()
+	l.WriteStackPath(f, ln)
+	if string(l.b) != f+":"+strconv.Itoa(ln) {
+		t.FailNow()
+	}
+}
+
+func TestLog_WriteSpace(t *testing.T) {
+	l.Reset()
+	l.WriteSpace()
+	if string(l.b) != " " {
+		t.FailNow()
+	}
+}
+
+func TestLog_WriteString(t *testing.T) {
+	l.Reset()
+	l.WriteString("123")
 	if string(l.b) != "123" {
 		t.FailNow()
 	}
 }
 
 func TestLog_Stack(t *testing.T) {
-	l := Get()
 	l.Reset()
 	defer func() {
 		recover()
-		l.Stack(false)
+		l.WriteStack(false)
 		t.Log(string(l.b))
-		defer Put(l)
 	}()
 	panic("123")
 }
 
-func Test_Panic(t *testing.T) {
-	defer func() {
-		re := recover()
-		switch re.(type) {
-		case *panicError:
-		default:
-			t.FailNow()
-		}
-	}()
-	Panic("123")
-}
-
-func Test_CheckError(t *testing.T) {
-	defer func() {
-		re := recover()
-		switch re.(type) {
-		case *panicError:
-		default:
-			t.FailNow()
-		}
-	}()
-	CheckError(errors.New("123"))
-}
-
-func Benchmark_LogPrint(b *testing.B) {
+func Benchmark_LoggerPrint(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	w := bytes.Buffer{}
-	l := Get()
-	defer Put(l)
-	l.Info.Writer = &w
-	l.Info.Level = LevelDebug
-	l.Info.Skip = 0
-	l.Info.FileLine = FileLineDisable
 	for i := 0; i < b.N; i++ {
 		l.Reset()
-		l.Print("test")
+		_, _ = l.Print(&w, LevelDebug, StackInfoDisable, "test", 0)
 		w.Reset()
 	}
 }
 
-func Benchmark_Std_LogPrint(b *testing.B) {
+func Benchmark_StdLoggerPrint(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	w := bytes.Buffer{}
@@ -199,7 +182,19 @@ func Benchmark_Std_LogPrint(b *testing.B) {
 	}
 }
 
-func Benchmark_Std_Print(b *testing.B) {
+func Benchmark_Print(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	w := bytes.Buffer{}
+	SetWriter(&w)
+	SetStackInfo(StackInfoDisable)
+	for i := 0; i < b.N; i++ {
+		_, _ = Print(LevelDebug, 0, "test")
+		w.Reset()
+	}
+}
+
+func Benchmark_StdPrint(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	w := bytes.Buffer{}
@@ -211,27 +206,19 @@ func Benchmark_Std_Print(b *testing.B) {
 	}
 }
 
-func Benchmark_Print(b *testing.B) {
-	b.ReportAllocs()
-	b.ResetTimer()
-	w := bytes.Buffer{}
-	for i := 0; i < b.N; i++ {
-		Print(&w, LevelDebug, 0, FileLineDisable, "test")
-		w.Reset()
-	}
-}
-
 func Benchmark_Printf(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	w := bytes.Buffer{}
+	SetWriter(&w)
+	SetStackInfo(StackInfoDisable)
 	for i := 0; i < b.N; i++ {
-		Printf(&w, LevelDebug, 0, FileLineDisable, "test%d", i)
+		_, _ = Printf(LevelDebug, 0, "test%d", i)
 		w.Reset()
 	}
 }
 
-func Benchmark_Std_Printf(b *testing.B) {
+func Benchmark_StdPrintf(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	w := bytes.Buffer{}
@@ -247,13 +234,15 @@ func Benchmark_Sprint(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	w := bytes.Buffer{}
+	SetWriter(&w)
+	SetStackInfo(StackInfoDisable)
 	for i := 0; i < b.N; i++ {
-		Sprint(&w, LevelDebug, 0, FileLineDisable, i)
+		_, _ = Sprint(LevelDebug, 0, i)
 		w.Reset()
 	}
 }
 
-func Benchmark_Std_Sprint(b *testing.B) {
+func Benchmark_StdSprint(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	w := bytes.Buffer{}

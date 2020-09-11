@@ -53,7 +53,6 @@ func init() {
 // 表示一行日志
 type Logger struct {
 	b []byte // 缓存
-	c int    // stack call depth
 }
 
 // io.WriteTo接口
@@ -227,11 +226,11 @@ func (lg *Logger) WriteDateTime(t *time.Time) {
 }
 
 // 写入日志级别
-func (lg *Logger) WriteLevel(level Level) {
-	lg.b = append(lg.b, byte(level))
+func (lg *Logger) WriteLevel(l Level) {
+	lg.b = append(lg.b, byte(l))
 }
 
-// 写入堆栈信息
+// 写入堆栈的文件名
 func (lg *Logger) WriteStackFile(f string, ln int) {
 	i := len(f) - 1
 	for ; i >= 0; i-- {
@@ -245,7 +244,7 @@ func (lg *Logger) WriteStackFile(f string, ln int) {
 	lg.WriteInt(ln)
 }
 
-// 写入堆栈信息
+// 写入堆栈文件的完整路径
 func (lg *Logger) WriteStackPath(f string, ln int) {
 	lg.b = append(lg.b, f...)
 	lg.b = append(lg.b, FileLineSeparator)
@@ -366,14 +365,6 @@ Loop:
 	return
 }
 
-func stack(n int) (string, int) {
-	_, f, l, o := runtime.Caller(n + 1)
-	if !o {
-		return "???", -1
-	}
-	return f, l
-}
-
 // 打印输出到默认Writer，l:日志级别，i:堆栈，s:日志文本，
 func Print(l Level, c int, s string) (int, error) {
 	lg := logPool.Get().(*Logger)
@@ -383,7 +374,7 @@ func Print(l Level, c int, s string) (int, error) {
 	return n, e
 }
 
-// 格式化输出
+// 格式化输出，使用默认的writer和stackinfo
 func Printf(l Level, c int, f string, a ...interface{}) (int, error) {
 	lg := logPool.Get().(*Logger)
 	lg.Reset()
@@ -392,7 +383,7 @@ func Printf(l Level, c int, f string, a ...interface{}) (int, error) {
 	return n, e
 }
 
-// 格式化输出
+// 格式化输出，使用默认的writer和stackinfo
 func Sprint(l Level, c int, a ...interface{}) (int, error) {
 	lg := logPool.Get().(*Logger)
 	lg.Reset()
@@ -401,22 +392,30 @@ func Sprint(l Level, c int, a ...interface{}) (int, error) {
 	return n, e
 }
 
-// 简洁的Debug
+func stack(n int) (string, int) {
+	_, f, l, o := runtime.Caller(n + 1)
+	if !o {
+		return "???", -1
+	}
+	return f, l
+}
+
+// 简洁的Debug，使用默认的writer和stackinfo
 func Debug(c int, a ...interface{}) {
 	_, _ = Sprint(LevelDebug, c+1, a...)
 }
 
-// 简洁的Info
+// 简洁的Info，使用默认的writer和stackinfo
 func Info(c int, a ...interface{}) {
 	_, _ = Sprint(LevelInfo, c+1, a...)
 }
 
-// 简洁的Warn
+// 简洁的Warn，使用默认的writer和stackinfo
 func Warn(c int, a ...interface{}) {
 	_, _ = Sprint(LevelWarn, c+1, a...)
 }
 
-// 简洁的Error
+// 简洁的Error，使用默认的writer和stackinfo
 func Error(c int, a ...interface{}) {
 	_, _ = Sprint(LevelError, c+1, a...)
 }

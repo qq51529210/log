@@ -1,11 +1,31 @@
 # log
 标准库的log包输出日志头部格式固定了，我不喜欢，所以我把它拆分开了，可以自由的打印日志头部  
 ## 用法
-如果使用默认的Print函数，输出的格式为<year-month-day hour:minute:second.nano level stack:log>  
-进行格式化的是Log{}这个结构体，调用它的函数可以自定义格式化的日志，具体看Print()函数的实现  
+如果使用默认的Print函数，输出的格式为<level year-month-day hour:minute:second.nano stack log>  
+可以包装Logger来实现自己的日志格式
+```
+lg := new(Logger)
+// 级别
+lg.WriteLevel(l)
+lg.WriteSpace()
+// 时间加日期
+t := time.Now()
+lg.WriteDateTime(&t)
+lg.WriteSpace()
+// 堆栈文件/完整路径
+lg.WriteStackFile()
+lg.WriteStackPath()
+// 日志文本/数据
+lg.WriteString()
+lg.WriteBytes()
+
+对时间日期格式不满足，也可以自己包装
+lg.WriteInt()
+lg.WriteIntR0()
+lg.WriteIntL0()
+```
 ## 测试  
-既然是造轮子，肯定得造好一点的  
-下一步实现一个简单的sprintf，实现0分配内存，并提升性能  
+下面是和标准库的性能测试
 ```
 goos: darwin
 goarch: amd64

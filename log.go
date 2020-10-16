@@ -331,7 +331,7 @@ func (lg *Logger) WriteStack(panicLine bool) {
 	// 是否找到/runtime/panic.go，下一行就是panic的地方
 	ok := false
 Loop:
-	for ; i < n; {
+	for i < n {
 		// 文件行开始，'\t'
 		if lg.b[i] == '\t' {
 			i++
@@ -401,22 +401,42 @@ func stack(n int) (string, int) {
 }
 
 // 简洁的Debug，使用默认的writer和stackinfo
-func Debug(c int, a ...interface{}) {
+func Debug(a ...interface{}) {
+	_, _ = Sprint(LevelDebug, 1, a...)
+}
+
+// 简洁的Info，使用默认的writer和stackinfo
+func Info(a ...interface{}) {
+	_, _ = Sprint(LevelInfo, 1, a...)
+}
+
+// 简洁的Warn，使用默认的writer和stackinfo
+func Warn(a ...interface{}) {
+	_, _ = Sprint(LevelWarn, 1, a...)
+}
+
+// 简洁的Error，使用默认的writer和stackinfo
+func Error(a ...interface{}) {
+	_, _ = Sprint(LevelError, 1, a...)
+}
+
+// 简洁的Debug，使用默认的writer和stackinfo
+func DebugStack(c int, a ...interface{}) {
 	_, _ = Sprint(LevelDebug, c+1, a...)
 }
 
 // 简洁的Info，使用默认的writer和stackinfo
-func Info(c int, a ...interface{}) {
+func InfoStack(c int, a ...interface{}) {
 	_, _ = Sprint(LevelInfo, c+1, a...)
 }
 
 // 简洁的Warn，使用默认的writer和stackinfo
-func Warn(c int, a ...interface{}) {
+func WarnStack(c int, a ...interface{}) {
 	_, _ = Sprint(LevelWarn, c+1, a...)
 }
 
 // 简洁的Error，使用默认的writer和stackinfo
-func Error(c int, a ...interface{}) {
+func ErrorStack(c int, a ...interface{}) {
 	_, _ = Sprint(LevelError, c+1, a...)
 }
 

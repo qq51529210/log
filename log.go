@@ -453,12 +453,7 @@ func SetStackInfo(i StackInfo) {
 }
 
 // recover，然后输出堆栈，panicLine:/runtime/panic.go之后的所有行或者一行
-func Recover(panicLine bool) bool {
-	// recover
-	r := recover()
-	if r == nil {
-		return false
-	}
+func Recover(re interface{}, panicLine bool) {
 	// 获取Logger
 	lg := logPool.Get().(*Logger)
 	lg.Reset()
@@ -469,11 +464,10 @@ func Recover(panicLine bool) bool {
 	lg.WriteSpace()
 	lg.WriteStack(panicLine)
 	lg.WriteSpace()
-	_, _ = fmt.Fprint(lg, r)
+	_, _ = fmt.Fprint(lg, re)
 	lg.WriteEndLine()
 	_, _ = defaultWriter.Write(lg.b)
 	logPool.Put(lg)
-	return true
 }
 
 // 检查错误，直接panic

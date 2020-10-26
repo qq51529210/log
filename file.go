@@ -88,7 +88,10 @@ func NewFileLogger(cfg *FileConfig) (*File, error) {
 	// 保存routine
 	go func(f *File) {
 		defer func() {
-			Recover(true)
+			re := recover()
+			if re != nil {
+				Recover(re, true)
+			}
 			f.syncTimer.Stop()
 			close(f.exit)
 		}()

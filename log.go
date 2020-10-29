@@ -462,9 +462,23 @@ func Recover(re interface{}, panicLine bool) {
 	t := time.Now()
 	lg.WriteDateTime(&t)
 	lg.WriteSpace()
-	lg.WriteStack(panicLine)
-	lg.WriteSpace()
-	_, _ = fmt.Fprint(lg, re)
+
+	if e, o := re.(*panicError); o {
+		switch defaultStack {
+		case StackInfoDisable:
+		case StackInfoFile:
+			lg.WriteStackFile(e.File, e.Line)
+			lg.WriteSpace()
+		case StackInfoPath:
+			lg.WriteStackPath(e.File, e.Line)
+			lg.WriteSpace()
+		}
+		lg.WriteString(e.Error())
+	} else {
+		lg.WriteStack(panicLine)
+		lg.WriteSpace()
+		_, _ = fmt.Fprint(lg, re)
+	}
 	lg.WriteEndLine()
 	_, _ = defaultWriter.Write(lg.b)
 	logPool.Put(lg)
@@ -473,6 +487,28 @@ func Recover(re interface{}, panicLine bool) {
 // 检查错误，直接panic
 func CheckError(err error) {
 	if err != nil {
-		panic(err)
+		e := new(panicError)
+		e.Err = err
+		e.Time = time.Now()
+		_, f, l, o := runtime.Caller(1)
+		if o {
+			e.File = f
+			e.Line = l
+		} else {
+			e.File = "???"
+			e.Line = -1
+		}
+		panic(e)
 	}
+}
+
+type panicError struct {
+	File string
+	Line int
+	Time time.Time
+	Err  error
+}
+
+func (e *panicError) Error() string {
+	return e.Err.Error()
 }

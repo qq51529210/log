@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"log"
 	"testing"
-	"time"
 )
 
 var l = new(Log)
@@ -74,52 +73,6 @@ func TestLog_IntR0(t *testing.T) {
 	}
 }
 
-func TestLog_DateTime(t *testing.T) {
-	l.Reset()
-	tm := time.Date(20, 1, 12, 2, 30, 20, 123456, time.Local)
-	l.Time(&tm)
-	if string(l.b) != "0020-01-12 02:30:20.123456000" {
-		t.FailNow()
-	}
-}
-
-func TestLog_Level(t *testing.T) {
-	l.Reset()
-	l.Level(LevelDebug)
-	if l.b[0] != byte(LevelDebug) {
-		t.FailNow()
-	}
-	l.Reset()
-	l.Level(LevelInfo)
-	if l.b[0] != byte(LevelInfo) {
-		t.FailNow()
-	}
-	l.Reset()
-	l.Level(LevelWarn)
-	if l.b[0] != byte(LevelWarn) {
-		t.FailNow()
-	}
-	l.Reset()
-	l.Level(LevelError)
-	if l.b[0] != byte(LevelError) {
-		t.FailNow()
-	}
-	l.Reset()
-	l.Level(LevelPanic)
-	if l.b[0] != byte(LevelPanic) {
-		t.FailNow()
-	}
-	l.Reset()
-}
-
-func TestLog_Space(t *testing.T) {
-	l.Reset()
-	l.Space()
-	if string(l.b) != " " {
-		t.FailNow()
-	}
-}
-
 func TestLog_String(t *testing.T) {
 	l.Reset()
 	l.String("123")
@@ -134,7 +87,8 @@ func Benchmark_LoggerPrint(b *testing.B) {
 	w := bytes.Buffer{}
 	for i := 0; i < b.N; i++ {
 		l.Reset()
-		_, _ = l.Print(&w, LevelDebug, 0, "test")
+		l.Header(DebugLevel, 0)
+		l.String("test\n")
 		w.Reset()
 	}
 }
@@ -156,7 +110,7 @@ func Benchmark_Print(b *testing.B) {
 	w := bytes.Buffer{}
 	SetWriter(&w)
 	for i := 0; i < b.N; i++ {
-		_, _ = Print(LevelDebug, 0, "test")
+		Print(DebugLevel, 0, "test")
 		w.Reset()
 	}
 }
@@ -179,7 +133,7 @@ func Benchmark_Printf(b *testing.B) {
 	w := bytes.Buffer{}
 	SetWriter(&w)
 	for i := 0; i < b.N; i++ {
-		_, _ = Printf(LevelDebug, 0, "test%d", i)
+		Printf(DebugLevel, 0, "test%d", i)
 		w.Reset()
 	}
 }
@@ -202,7 +156,7 @@ func Benchmark_Sprint(b *testing.B) {
 	w := bytes.Buffer{}
 	SetWriter(&w)
 	for i := 0; i < b.N; i++ {
-		_, _ = Fprint(LevelDebug, 0, i)
+		Fprint(DebugLevel, 0, i)
 		w.Reset()
 	}
 }

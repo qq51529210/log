@@ -3,56 +3,67 @@
 
 ## 用法
 
-引入包
+自定义头部格式，比如，20201230 024308884189 [Debug] /Users/ben/Documents/project/go/src/test/main.go:26 test log string	
 
 ```go
-import "github.com/qq51529210/log"
+// 首先，设置日期和时间的分隔符为""
+log.DateSeparator = ""
+log.TimeSeparator = ""
+func Print(w io.Writer, level string, str string) (int, error) {
+  // 从缓存池中获取*Log，
+  l := log.GetLog()
+  // 时间
+  l.Time()
+  l.Space()
+  // 级别
+  l.String(level)
+  l.Space()
+  // 调用堆栈
+  l.PathLine(1)
+  l.Space()
+  // 文本
+  l.String(str)
+  l.EndLine()
+  // 输出
+  n, err := w.Write(l.Data())
+  // 放回缓存池
+  log.PutLog(l)
+  // 返回
+  return n, err
+}
+```
 
-// 从缓存池中获取*Log，
-l := log.GetLog()
-// 放回缓存池
-defer log.PutLog(l)
-// 或者new一个
-l = new(log.Log)
-// 时间
-t := time.Now()
-l.Time(&t)
-l.Space()
-// 级别
-l.Level(log.LevelDebug)
-l.Space()
-// 堆栈
-l.FileLine(0)
-l.PathLine(0)
-l.Space()
-// 换行
-l.EndLine()
-// 上面是自己的格式，或者按我的格式:level time file-line log
-l.Header(log.LevelDebug, 0)
-// 按我的格式输出日志到控制台，下面输出
-// D 2020-12-30 01:17:31.206716000 /Users/ben/Documents/project/go/src/github.com/qq51529210/log/log.go:299 test
-l.Print(os.Stdout, log.LevelDebug, 0, "test")
-// 格式化输出
-l.Printf(os.Stdout, log.LevelDebug, 0, "test %d", 123)
-l.Fprint(os.Stdout, log.LevelDebug, 0, 1, 2, 3, 4, 5)
-// 也可以用全局函数，但是会输出到默认的io.Writer
-log.Print(log.LevelDebug, 0, "test")
-log.Printf(log.LevelDebug, 0, "test %d", 123)
-log.Fprint(log.LevelDebug, 0, 1, 2, 3, 4, 5)
-// 设置全局io.Writer
+默认格式，比如，[D] 2020-12-30 02:53:20.953755 /Users/ben/Documents/project/go/src/test/main.go:20 test
+
+```go
+// 设置默认的io.Writer
 log.SetWriter(os.Stderr)
-// 自定义符号
-log.SpaceSeparator    byte      = ' '         // 空格
-log.DateSeparator     byte      = '-'         // 日期
-log.TimeSeparator     byte      = ':'         // 时间
-log.NanoSecSeparator  byte      = '.'         // 纳秒
-log.FileLineSeparator byte      = ':'         // 堆栈
-// 另外，还实现了一个本地文件的日志File
-file, err := log.NewFileLogger(&FileConfig{})
-check(err)
-defer file.Close()
-// 然后，设置Writer
+// 设置级别
+log.DebugLevel = "[D]"
+// 输出
+log.Debug("test")
+// 如果需要控制调用堆栈
+log.Print("debug", 0, "test")
+log.Printf("info", 1, "test %d", 0)
+log.Fprint("warn", 2, 0, "1", 2.3)
+```
+
+保存到本地磁盘
+
+```go
+// 实例，FileConfig的字段，请看注释
+file, err := NewFileLogger(&FileConfig{})
+if err != nil {
+  panic(err)
+}
+// 关闭
+defer func(){
+  _ = file.Close()
+}
+// 设置io.Writer
 log.SetWriter(file)
+// 写的日志会输出到file
+log.Debug("test")
 ```
 
 ## 下一步
@@ -65,15 +76,14 @@ log.SetWriter(file)
 ```go
 goos: darwin
 goarch: amd64
-pkg: github.com/qq51529210/log
-Benchmark_LoggerPrint-4          1000000              1018 ns/op             216 B/op          2 allocs/op
-Benchmark_StdLoggerPrint-4        982530              1136 ns/op             224 B/op          3 allocs/op
-Benchmark_Print-4                1000000              1046 ns/op             216 B/op          2 allocs/op
-Benchmark_StdPrint-4             1067096              1131 ns/op             224 B/op          3 allocs/op
-Benchmark_Printf-4                995175              1163 ns/op             224 B/op          3 allocs/op
-Benchmark_StdPrintf-4            1000000              1202 ns/op             240 B/op          3 allocs/op
-Benchmark_Sprint-4               1000000              1139 ns/op             224 B/op          3 allocs/op
-Benchmark_StdSprint-4            1000000              1180 ns/op             232 B/op          3 allocs/op
+Benchmark_LoggerPrint-4          1428115               830 ns/op             216 B/op          2 allocs/op
+Benchmark_StdLoggerPrint-4       1061575              1139 ns/op             224 B/op          3 allocs/op
+Benchmark_Print-4                1141396              1052 ns/op             216 B/op          2 allocs/op
+Benchmark_StdPrint-4             1000000              1134 ns/op             224 B/op          3 allocs/op
+Benchmark_Printf-4                913729              1163 ns/op             224 B/op          3 allocs/op
+Benchmark_StdPrintf-4             940375              1220 ns/op             240 B/op          3 allocs/op
+Benchmark_Sprint-4               1000000              1152 ns/op             224 B/op          3 allocs/op
+Benchmark_StdSprint-4            1000000              1184 ns/op             232 B/op          3 allocs/op
 PASS
 ok      github.com/qq51529210/log       12.809s
 ```

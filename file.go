@@ -43,7 +43,6 @@ type File struct {
 	maxSize    int           // 文件最大大小
 	maxDay     int           // 最大天数
 	buffer     bytes.Buffer  // 缓存
-	level      Level         // 级别
 	duration   time.Duration // 保存间隔
 	dayFormat  string        // 日期目录的格式
 	fileFormat string        // 文件名字格式

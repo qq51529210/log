@@ -3,7 +3,7 @@
 
 ## 用法
 
-自定义头部格式，比如，20201230 024308884189 [Debug] /Users/ben/Documents/project/go/src/test/main.go:26 test log string	
+自定义头部格式，比如，`20201230 024308884189 [Debug] /Users/ben/Documents/project/go/src/test/main.go:26 test log string`	
 
 ```go
 // 首先，设置日期和时间的分隔符为""
@@ -33,7 +33,7 @@ func Print(w io.Writer, level string, str string) (int, error) {
 }
 ```
 
-默认格式，比如，[D] 2020-12-30 02:53:20.953755 /Users/ben/Documents/project/go/src/test/main.go:20 test
+默认格式，比如，`[D] 2020-12-30 02:53:20.953755 /Users/ben/Documents/project/go/src/test/main.go:20 test`
 
 ```go
 // 设置默认的io.Writer

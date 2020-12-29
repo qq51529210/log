@@ -2,6 +2,7 @@ package log
 
 import (
 	"errors"
+	"io"
 )
 
 var (
@@ -17,6 +18,7 @@ var (
 type Writer struct {
 	Skip int
 	Level
+	Out io.Writer
 }
 
 func (w *Writer) Write(b []byte) (int, error) {
@@ -27,8 +29,8 @@ func (w *Writer) Write(b []byte) (int, error) {
 	if b[n-1] == '\n' {
 		n--
 	}
-	l := logPool.Get().(*Logger)
-	_, err := l.PrintBytes(defaultWriter, w.Level, defaultStack, w.Skip, b[:n])
+	l := logPool.Get().(*Log)
+	n, err := l.PrintBytes(w.Out, w.Level, w.Skip, b)
 	logPool.Put(l)
 	return n, err
 }

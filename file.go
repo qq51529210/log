@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/qq51529210/common"
 	"io"
 	"io/ioutil"
 	"os"
@@ -23,12 +22,12 @@ var (
 
 // 配置，文件日志
 type FileConfig struct {
-	Dir        string `json:"dir"`         // 根目录
-	Size       string `json:"size"`        // 每个文件的大小
-	Day        int    `json:"day"`         // 保存的天数
-	DayFormat  string `json:"day_format"`  // 日期目录命名规则
-	FileFormat string `json:"file_format"` // 日期目录下文件的命名规则
-	Duration   string `json:"duration"`    // 保存到磁盘的间隔
+	Dir        string        `json:"dir"`         // 根目录，默认log
+	Size       int           `json:"size"`        // 每个文件的大小，默认1m
+	Day        int           `json:"day"`         // 保存的天数，默认1
+	DayFormat  string        `json:"day_format"`  // 日期目录命名规则
+	FileFormat string        `json:"file_format"` // 日期目录下文件的命名规则
+	Duration   time.Duration `json:"duration"`    // 保存到磁盘的间隔，默认1s
 }
 
 // 磁盘日志
@@ -56,45 +55,41 @@ type File struct {
 
 // 新的日志文件对象
 func NewFileLogger(cfg *FileConfig) (*File, error) {
-	// 解析配置参数
-	size, err := common.StringToByte(cfg.Size)
-	if nil != err {
-		return nil, err
+	if cfg.Day < 1 {
+		cfg.Day = 1
 	}
-	dur, err := time.ParseDuration(cfg.Duration)
-	if nil != err {
-		return nil, err
+	if cfg.Size < 1 {
+		cfg.Size = 1024 * 1024
+	}
+	if cfg.Duration < 1 {
+		cfg.Duration = 1000
+	}
+	if cfg.DayFormat == "" {
+		cfg.DayFormat = "20060102"
+	}
+	if cfg.FileFormat == "" {
+		cfg.FileFormat = "150405.999999999"
+	}
+	if cfg.Dir == "" {
+		cfg.Dir = "log"
 	}
 	// 对象
 	f := &File{
 		rootDir:    cfg.Dir,
 		exit:       make(chan struct{}),
-		maxDay:     common.MaxInt(cfg.Day, 1),
-		maxSize:    common.MaxInt(int(size), 1024*1024),
-		duration:   common.MaxDuration(dur, time.Second),
+		maxDay:     cfg.Day,
+		maxSize:    cfg.Size,
+		duration:   cfg.Duration * time.Millisecond,
 		dayFormat:  cfg.DayFormat,
 		fileFormat: cfg.FileFormat,
-	}
-	if f.rootDir == "" {
-		f.rootDir = "./"
-	}
-	if f.dayFormat == "" {
-		f.dayFormat = "20060102"
-	}
-	if f.fileFormat == "" {
-		f.fileFormat = "150405.999999999"
 	}
 	f.newFile()
 	// 保存routine
 	go func(f *File) {
-		defer func() {
-			re := recover()
-			if re != nil {
-				Recover(re, true)
-			}
+		defer Recover(func() {
 			f.syncTimer.Stop()
 			close(f.exit)
-		}()
+		})
 		f.syncTimer = time.NewTimer(f.duration)
 		for !f.closed {
 			<-f.syncTimer.C

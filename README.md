@@ -3,12 +3,15 @@
 
 ## 用法
 
-自定义头部格式，比如，`20201230 024308884189 [Debug] /Users/ben/Documents/project/go/src/test/main.go:26 test log string`	
+自定义头部格式，比如，`20201230 024308 [Debug] /Users/ben/Documents/project/go/src/test/main.go:26 test log string`	
 
 ```go
-// 首先，设置日期和时间的分隔符为""
+// 设置日期和时间的分隔符为""
 log.DateSeparator = ""
 log.TimeSeparator = ""
+// 不输出纳秒
+log.NanosecondLength = 0
+// 自定义Print函数
 func Print(w io.Writer, level string, str string) (int, error) {
   // 从缓存池中获取*Log，
   l := log.GetLog()

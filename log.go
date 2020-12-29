@@ -1,6 +1,7 @@
 package log
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -24,6 +25,7 @@ var (
 	ErrorLevel                  = "E"
 	PanicLevel                  = "P"
 	endLine                     = []byte("\n")
+	panicFileLine               = []byte("runtime/panic.go")
 )
 
 // 缓存池的new函数
@@ -213,6 +215,7 @@ func (l *Log) Time() {
 
 // 写入堆栈信息
 func (l *Log) Stack() {
+	// 所有的堆栈
 	i1 := len(l.b)
 	i2 := 0
 	n := 0
@@ -226,6 +229,52 @@ func (l *Log) Stack() {
 		}
 		l.b = append(l.b, make([]byte, 128)...)
 	}
+	/*
+		github.com/qq51529210/log.(*Log).Stack(0xc00000c080)
+		        /Users/ben/Documents/project/go/src/github.com/qq51529210/log/log.go:221 +0x7f
+		github.com/qq51529210/log.Recover(0x10d5c70)
+		        /Users/ben/Documents/project/go/src/github.com/qq51529210/log/log.go:357 +0x1fa
+		panic(0x10b4540, 0x10ed8e0)
+		        /usr/local/go/src/runtime/panic.go:969 +0x175
+		main.f1(...)
+		        /Users/ben/Documents/project/go/src/test/main.go:20
+		main.main()
+		        /Users/ben/Documents/project/go/src/test/main.go:27 +0x65
+	*/
+	// 简化一下，只保留文件路径
+	n = i2 - 1
+	i := i1
+	m := i
+	// 是否找到/runtime/panic.go，下一行就是panic的地方
+	ok := false
+	for i < n {
+		// 文件行开始，'\t'
+		if l.b[i] == '\t' {
+			i++
+			i1 = i
+			for ; i < n; i++ {
+				// 文件行路径结束
+				if l.b[i] == ' ' || l.b[i] == '\n' {
+					// 找到/runtime/panic.go
+					if !ok {
+						i2 = i - 1
+						i2 = i1 + bytes.LastIndexByte(l.b[i1:i2], ':')
+						if i2 > 0 {
+							ok = bytes.LastIndex(l.b[i1:i2], panicFileLine) >= 0
+						}
+					} else {
+						m += copy(l.b[m:], l.b[i1:i])
+						l.b[m] = ' '
+						m++
+					}
+					break
+				}
+			}
+		}
+		i++
+	}
+	l.b = l.b[:m]
+	return
 }
 
 // level:日志级别，skip:堆栈调用层级

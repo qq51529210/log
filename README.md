@@ -75,18 +75,18 @@ log.Debug("test")
 
 ## 测试  
 
-下面是和标准库的性能测试，重新造的轮子还是要快一些，然并卵。
+下面是和标准库的性能测试，然并卵。
 ```go
 goos: darwin
 goarch: amd64
-Benchmark_LoggerPrint-4          1428115               830 ns/op             216 B/op          2 allocs/op
-Benchmark_StdLoggerPrint-4       1061575              1139 ns/op             224 B/op          3 allocs/op
-Benchmark_Print-4                1141396              1052 ns/op             216 B/op          2 allocs/op
-Benchmark_StdPrint-4             1000000              1134 ns/op             224 B/op          3 allocs/op
-Benchmark_Printf-4                913729              1163 ns/op             224 B/op          3 allocs/op
-Benchmark_StdPrintf-4             940375              1220 ns/op             240 B/op          3 allocs/op
-Benchmark_Sprint-4               1000000              1152 ns/op             224 B/op          3 allocs/op
-Benchmark_StdSprint-4            1000000              1184 ns/op             232 B/op          3 allocs/op
+Benchmark_LoggerPrint-4          1597740               760 ns/op             216 B/op          2 allocs/op
+Benchmark_StdLoggerPrint-4       1000000              1177 ns/op             224 B/op          3 allocs/op
+Benchmark_Print-4                1564474               767 ns/op             216 B/op          2 allocs/op
+Benchmark_StdPrint-4              942656              1189 ns/op             224 B/op          3 allocs/op
+Benchmark_Printf-4               1368817               874 ns/op             224 B/op          3 allocs/op
+Benchmark_StdPrintf-4             868705              1508 ns/op             240 B/op          3 allocs/op
+Benchmark_Fprint-4               1340488               915 ns/op             224 B/op          3 allocs/op
+Benchmark_StdSprint-4            1000000              1250 ns/op             232 B/op          3 allocs/op
 PASS
 ok      github.com/qq51529210/log       12.809s
 ```

@@ -6,7 +6,13 @@ import (
 	"testing"
 )
 
-var l = new(Log)
+var (
+	l = new(Log)
+	w = bytes.Buffer{}
+	//stdFlag = 0
+	stdFlag = log.LstdFlags | log.Lmicroseconds | log.Llongfile
+	//stdFlag = log.LstdFlags | log.Lmicroseconds
+)
 
 func TestLog_Reset(t *testing.T) {
 	l.Reset()
@@ -84,91 +90,84 @@ func TestLog_String(t *testing.T) {
 func Benchmark_LoggerPrint(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
-	w := bytes.Buffer{}
 	for i := 0; i < b.N; i++ {
+		w.Reset()
 		l.Reset()
 		l.Header(DebugLevel, 0)
 		l.String("test\n")
-		w.Reset()
+		w.Write(l.b)
 	}
 }
 
 func Benchmark_StdLoggerPrint(b *testing.B) {
+	l := log.New(&w, "D", stdFlag)
 	b.ReportAllocs()
 	b.ResetTimer()
-	w := bytes.Buffer{}
-	l := log.New(&w, "D", log.LstdFlags|log.Lmicroseconds|log.Llongfile)
 	for i := 0; i < b.N; i++ {
-		l.Println("test")
 		w.Reset()
+		l.Println("test")
 	}
 }
 
 func Benchmark_Print(b *testing.B) {
+	SetWriter(&w)
 	b.ReportAllocs()
 	b.ResetTimer()
-	w := bytes.Buffer{}
-	SetWriter(&w)
 	for i := 0; i < b.N; i++ {
-		Print(DebugLevel, 0, "test")
 		w.Reset()
+		Print(DebugLevel, 0, "test")
 	}
 }
 
 func Benchmark_StdPrint(b *testing.B) {
+	log.SetFlags(stdFlag)
+	log.SetOutput(&w)
 	b.ReportAllocs()
 	b.ResetTimer()
-	w := bytes.Buffer{}
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Llongfile)
-	log.SetOutput(&w)
 	for i := 0; i < b.N; i++ {
-		log.Println("test")
 		w.Reset()
+		log.Println("test")
 	}
 }
 
 func Benchmark_Printf(b *testing.B) {
+	SetWriter(&w)
 	b.ReportAllocs()
 	b.ResetTimer()
-	w := bytes.Buffer{}
-	SetWriter(&w)
 	for i := 0; i < b.N; i++ {
-		Printf(DebugLevel, 0, "test%d", i)
 		w.Reset()
+		Printf(DebugLevel, 0, "test%d", i)
 	}
 }
 
 func Benchmark_StdPrintf(b *testing.B) {
+	log.SetFlags(stdFlag)
+	log.SetOutput(&w)
 	b.ReportAllocs()
 	b.ResetTimer()
-	w := bytes.Buffer{}
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Llongfile)
-	log.SetOutput(&w)
 	for i := 0; i < b.N; i++ {
-		log.Printf("test%d\n", i)
 		w.Reset()
+		log.Printf("test%d\n", i)
 	}
 }
 
-func Benchmark_Sprint(b *testing.B) {
+func Benchmark_Fprint(b *testing.B) {
+	SetWriter(&w)
 	b.ReportAllocs()
 	b.ResetTimer()
-	w := bytes.Buffer{}
-	SetWriter(&w)
 	for i := 0; i < b.N; i++ {
-		Fprint(DebugLevel, 0, i)
 		w.Reset()
+		Fprint(DebugLevel, 0, i)
 	}
 }
 
 func Benchmark_StdSprint(b *testing.B) {
+	log.SetFlags(stdFlag)
+	log.SetOutput(&w)
 	b.ReportAllocs()
 	b.ResetTimer()
-	w := bytes.Buffer{}
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Llongfile)
-	log.SetOutput(&w)
 	for i := 0; i < b.N; i++ {
-		log.Println(i)
 		w.Reset()
+		log.Println(i)
 	}
 }

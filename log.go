@@ -11,21 +11,31 @@ import (
 )
 
 var (
-	logPool                     = sync.Pool{} // Logger缓存
+	logPool                     = sync.Pool{} // Log缓存池
+	defaultWriter     io.Writer = os.Stdout   // 默认输出
 	SpaceSeparator              = " "         // 空格
 	DateSeparator               = "-"         // 日期
+	DateTimeSpace               = " "         // 日期和时间之间的空格
 	TimeSeparator               = ":"         // 时间
 	NanoSecSeparator            = "."         // 纳秒
 	FileLineSeparator           = ":"         // 堆栈
-	NanosecondLength            = 6           // 纳秒的格式化长度
-	defaultWriter     io.Writer = os.Stdout   // 默认输出
-	DebugLevel                  = "D"
-	InfoLevel                   = "I"
-	WarnLevel                   = "W"
-	ErrorLevel                  = "E"
-	PanicLevel                  = "P"
-	endLine                     = []byte("\n")
-	panicFileLine               = []byte("runtime/panic.go")
+	//SpaceSeparator    byte = ' '                        // 空格
+	//DateSeparator     byte = '-'                        // 日期
+	//DateTimeSpace     byte = ' '                        // 日期和时间之间的空格
+	//TimeSeparator     byte = ':'                        // 时间
+	//NanoSecSeparator  byte = '.'                        // 纳秒
+	//FileLineSeparator byte = ':'                        // 堆栈
+	NanosecondLength = 6                          // 纳秒的格式化长度
+	DebugLevel       = "D"                        // Debug函数的级别
+	InfoLevel        = "I"                        // Info函数的级别
+	WarnLevel        = "W"                        // Warn函数的级别
+	ErrorLevel       = "E"                        // Error函数的级别
+	PanicLevel       = "P"                        // Recover函数的级别
+	panicFileLine    = []byte("runtime/panic.go") // Stack函数查找panic的标志
+)
+
+const (
+	BaseSkip = 3 // Print/Printf/Fprint函数内有三层调用
 )
 
 // 缓存池的new函数
@@ -196,19 +206,28 @@ func (l *Log) Time() {
 	t := time.Now()
 	year, month, day := t.Date()
 	hour, minute, second := t.Clock()
+	// 日期
 	l.IntL0(year, 4)
 	l.b = append(l.b, DateSeparator...)
+	//l.b = append(l.b, DateSeparator)
 	l.IntL0(int(month), 2)
 	l.b = append(l.b, DateSeparator...)
+	//l.b = append(l.b, DateSeparator)
 	l.IntL0(day, 2)
-	l.b = append(l.b, SpaceSeparator...)
+	l.b = append(l.b, DateTimeSpace...)
+	//l.b = append(l.b, DateTimeSpace)
+	// 时间
 	l.IntL0(hour, 2)
 	l.b = append(l.b, TimeSeparator...)
+	//l.b = append(l.b, TimeSeparator)
 	l.IntL0(minute, 2)
 	l.b = append(l.b, TimeSeparator...)
+	//l.b = append(l.b, TimeSeparator)
 	l.IntL0(second, 2)
+	// 纳秒
 	if NanosecondLength > 0 {
 		l.b = append(l.b, NanoSecSeparator...)
+		//l.b = append(l.b, NanoSecSeparator)
 		l.IntR0(t.Nanosecond(), NanosecondLength)
 	}
 }
@@ -282,21 +301,23 @@ func (l *Log) Header(level string, skip int) {
 	// 级别
 	l.b = append(l.b, level...)
 	l.b = append(l.b, SpaceSeparator...)
+	//l.b = append(l.b, SpaceSeparator)
 	// 时间
 	l.Time()
 	l.b = append(l.b, SpaceSeparator...)
+	//l.b = append(l.b, SpaceSeparator)
 	// 调用堆栈
-	l.PathLine(skip + 1)
+	l.PathLine(skip)
 	l.b = append(l.b, SpaceSeparator...)
+	//l.b = append(l.b, SpaceSeparator)
 }
 
 // 写入堆栈的文件的完整路径path的文件名和行号line，skip:堆栈的层次
 func (l *Log) FileLine(skip int) {
-	_, path, line, o := runtime.Caller(skip + 1)
+	_, path, line, o := runtime.Caller(skip)
 	if !o {
-		l.b = append(l.b, "???"...)
-		l.b = append(l.b, FileLineSeparator...)
-		l.Int(-1)
+		path = "???"
+		line = -1
 	} else {
 		i := len(path) - 1
 		for ; i >= 0; i-- {
@@ -305,24 +326,25 @@ func (l *Log) FileLine(skip int) {
 				break
 			}
 		}
-		l.b = append(l.b, path[i:]...)
-		l.b = append(l.b, FileLineSeparator...)
-		l.Int(line)
+		path = path[i:]
 	}
+	l.b = append(l.b, path...)
+	l.b = append(l.b, FileLineSeparator...)
+	//l.b = append(l.b, FileLineSeparator)
+	l.Int(line)
 }
 
 // 写入堆栈的文件的完整路径path和行号line，skip:堆栈的层次
 func (l *Log) PathLine(skip int) {
-	_, path, line, o := runtime.Caller(skip + 1)
+	_, path, line, o := runtime.Caller(skip)
 	if !o {
-		l.b = append(l.b, "???"...)
-		l.b = append(l.b, FileLineSeparator...)
-		l.Int(-1)
-	} else {
-		l.b = append(l.b, path...)
-		l.b = append(l.b, FileLineSeparator...)
-		l.Int(line)
+		path = "???"
+		line = -1
 	}
+	l.b = append(l.b, path...)
+	l.b = append(l.b, FileLineSeparator...)
+	//l.b = append(l.b, FileLineSeparator)
+	l.Int(line)
 }
 
 // 设置默认的输出writer
@@ -335,7 +357,7 @@ func SetWriter(w io.Writer) {
 // 使用默认writer输出日志，level:日志级别，skip:堆栈调用层级，str:日志文本
 func Print(level string, skip int, str string) {
 	l := GetLog()
-	l.Header(level, skip+1)
+	l.Header(level, skip)
 	l.b = append(l.b, str...)
 	l.EndLine()
 	_, _ = defaultWriter.Write(l.b)
@@ -345,51 +367,51 @@ func Print(level string, skip int, str string) {
 // 使用默认writer输出日志，level:日志级别，skip:堆栈调用层级，data:数据
 func PrintBytes(level string, skip int, data []byte) {
 	l := GetLog()
-	l.Header(level, skip+1)
+	l.Header(level, skip)
+	l.b = append(l.b, data...)
+	l.EndLine()
 	_, _ = defaultWriter.Write(l.b)
 	logPool.Put(l)
-	_, _ = defaultWriter.Write(data)
-	_, _ = defaultWriter.Write(endLine)
 }
 
 // 使用默认writer输出日志，level:日志级别，skip:堆栈调用层级，format:格式化字符串，args:格式化数据
 func Printf(level string, skip int, format string, args ...interface{}) {
 	l := GetLog()
-	l.Header(level, skip+1)
+	l.Header(level, skip)
+	_, _ = fmt.Fprintf(l, format, args...)
+	l.EndLine()
 	_, _ = defaultWriter.Write(l.b)
 	logPool.Put(l)
-	_, _ = fmt.Fprintf(defaultWriter, format, args...)
-	_, _ = defaultWriter.Write(endLine)
 }
 
 // 使用默认writer输出日志，level:日志级别，skip:堆栈调用层级，args:格式化数据
 func Fprint(level string, skip int, args ...interface{}) {
 	l := GetLog()
-	l.Header(level, skip+1)
+	l.Header(level, skip)
+	_, _ = fmt.Fprint(l, args...)
+	l.EndLine()
 	_, _ = defaultWriter.Write(l.b)
 	logPool.Put(l)
-	_, _ = fmt.Fprint(defaultWriter, args...)
-	_, _ = defaultWriter.Write(endLine)
 }
 
 // 使用defaultWriter
 func Debug(a ...interface{}) {
-	Fprint(DebugLevel, 1, a...)
+	Fprint(DebugLevel, 4, a...)
 }
 
 // 使用defaultWriter
 func Info(a ...interface{}) {
-	Fprint(InfoLevel, 1, a...)
+	Fprint(InfoLevel, 4, a...)
 }
 
 // 使用defaultWriter
 func Warn(a ...interface{}) {
-	Fprint(WarnLevel, 1, a...)
+	Fprint(WarnLevel, 4, a...)
 }
 
 // 使用defaultWriter
 func Error(a ...interface{}) {
-	Fprint(ErrorLevel, 1, a...)
+	Fprint(ErrorLevel, 4, a...)
 }
 
 // 如果recover调用函数f
@@ -401,8 +423,10 @@ func Recover(f func()) {
 	l := GetLog()
 	l.b = append(l.b, PanicLevel...)
 	l.b = append(l.b, SpaceSeparator...)
+	//l.b = append(l.b, SpaceSeparator)
 	l.Time()
 	l.b = append(l.b, SpaceSeparator...)
+	//l.b = append(l.b, SpaceSeparator)
 	l.Stack()
 	l.EndLine()
 	_, _ = defaultWriter.Write(l.b)

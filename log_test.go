@@ -3,6 +3,7 @@ package log
 import (
 	"bytes"
 	"log"
+	"runtime"
 	"testing"
 )
 
@@ -92,8 +93,13 @@ func Benchmark_LoggerPrint(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		w.Reset()
+		_, path, line, o := runtime.Caller(0)
+		if !o {
+			path = "???"
+			line = -1
+		}
 		l.Reset()
-		l.Header(DebugLevel, 0)
+		l.Header(DebugLevel, path, line)
 		l.String("test\n")
 		w.Write(l.b)
 	}
@@ -105,7 +111,7 @@ func Benchmark_StdLoggerPrint(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		w.Reset()
-		l.Println("test")
+		l.Output(0, "test")
 	}
 }
 
@@ -115,7 +121,7 @@ func Benchmark_Print(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		w.Reset()
-		Print(DebugLevel, 0, "test")
+		Print(DebugLevel, BaseSkip, "test")
 	}
 }
 
@@ -136,7 +142,7 @@ func Benchmark_Printf(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		w.Reset()
-		Printf(DebugLevel, 0, "test%d", i)
+		Printf(DebugLevel, 1, "test%d", i)
 	}
 }
 
@@ -157,7 +163,7 @@ func Benchmark_Fprint(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		w.Reset()
-		Fprint(DebugLevel, 0, i)
+		Fprint(DebugLevel, BaseSkip, i)
 	}
 }
 

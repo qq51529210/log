@@ -3,12 +3,12 @@
 
 ## 用法
 
-自定义头部格式，比如，`20201230 024308 [Debug] /Users/ben/Documents/project/go/src/test/main.go:26 test log string`	
+自定义头部格式，比如，`2020-12-30 02:43:08 [Debug] main.go:26 test log string`	
 
 ```go
 // 设置日期和时间的分隔符为""
-log.DateSeparator = ""
-log.TimeSeparator = ""
+log.DateSeparator = '-'
+log.TimeSeparator = ':'
 // 不输出纳秒
 log.NanosecondLength = 0
 // 自定义Print函数
@@ -22,7 +22,12 @@ func Print(w io.Writer, level string, str string) (int, error) {
   l.String(level)
   l.Space()
   // 调用堆栈
-  l.PathLine(1)
+	_, path, line, o := runtime.Caller(1)
+	if !o {
+		path = "???"
+		line = -1
+	}
+  l.FileLine(path, line)
   l.Space()
   // 文本
   l.String(str)
@@ -79,15 +84,15 @@ log.Debug("test")
 ```go
 goos: darwin
 goarch: amd64
-Benchmark_LoggerPrint-4          1597740               760 ns/op             216 B/op          2 allocs/op
-Benchmark_StdLoggerPrint-4       1000000              1177 ns/op             224 B/op          3 allocs/op
-Benchmark_Print-4                1564474               767 ns/op             216 B/op          2 allocs/op
-Benchmark_StdPrint-4              942656              1189 ns/op             224 B/op          3 allocs/op
-Benchmark_Printf-4               1368817               874 ns/op             224 B/op          3 allocs/op
-Benchmark_StdPrintf-4             868705              1508 ns/op             240 B/op          3 allocs/op
-Benchmark_Fprint-4               1340488               915 ns/op             224 B/op          3 allocs/op
-Benchmark_StdSprint-4            1000000              1250 ns/op             232 B/op          3 allocs/op
+Benchmark_LoggerPrint-4          1338531               885 ns/op             216 B/op          2 allocs/op
+Benchmark_StdLoggerPrint-4       1301235               912 ns/op             216 B/op          2 allocs/op
+Benchmark_Print-4                1000000              1043 ns/op             216 B/op          2 allocs/op
+Benchmark_StdPrint-4              957441              1209 ns/op             224 B/op          3 allocs/op
+Benchmark_Printf-4                988069              1227 ns/op             224 B/op          3 allocs/op
+Benchmark_StdPrintf-4             945882              1278 ns/op             240 B/op          3 allocs/op
+Benchmark_Fprint-4               1000000              1206 ns/op             224 B/op          3 allocs/op
+Benchmark_StdSprint-4             950691              1254 ns/op             232 B/op          3 allocs/op
 PASS
-ok      github.com/qq51529210/log       12.809s
+ok      github.com/qq51529210/log       11.412s
 ```
 

@@ -374,24 +374,36 @@ func Fprint(level string, skip int, args ...interface{}) {
 	logPool.Put(l)
 }
 
-// 使用defaultWriter
 func Debug(a ...interface{}) {
 	Fprint(DebugLevel, 2, a...)
 }
 
-// 使用defaultWriter
 func Info(a ...interface{}) {
 	Fprint(InfoLevel, 2, a...)
 }
 
-// 使用defaultWriter
 func Warn(a ...interface{}) {
 	Fprint(WarnLevel, 2, a...)
 }
 
-// 使用defaultWriter
 func Error(a ...interface{}) {
 	Fprint(ErrorLevel, 2, a...)
+}
+
+func DebugSkip(skip int, a ...interface{}) {
+	Fprint(DebugLevel, skip+2, a...)
+}
+
+func InfoSkip(skip int, a ...interface{}) {
+	Fprint(InfoLevel, skip+2, a...)
+}
+
+func WarnSkip(skip int, a ...interface{}) {
+	Fprint(WarnLevel, skip+2, a...)
+}
+
+func ErrorSkip(skip int, a ...interface{}) {
+	Fprint(ErrorLevel, skip+2, a...)
 }
 
 // 如果recover调用函数f

@@ -420,6 +420,8 @@ func Recover(f func()) {
 	//l.b = append(l.b, SpaceSeparator...)
 	l.b = append(l.b, SpaceSeparator)
 	l.Stack()
+	l.b = append(l.b, SpaceSeparator)
+	_, _ = fmt.Fprint(l, re)
 	l.EndLine()
 	_, _ = defaultWriter.Write(l.b)
 	logPool.Put(l)

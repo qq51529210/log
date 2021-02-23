@@ -88,6 +88,11 @@ func TestLog_String(t *testing.T) {
 	}
 }
 
+func TestLog(t *testing.T) {
+	Print(DebugLevel, 0, "test")
+	Debug("test")
+}
+
 func Benchmark_LoggerPrint(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()

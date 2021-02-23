@@ -314,7 +314,7 @@ func SetWriter(w io.Writer) {
 func Print(level string, skip int, str string) {
 	l := GetLog()
 	// 调用堆栈
-	_, path, line, o := runtime.Caller(skip)
+	_, path, line, o := runtime.Caller(skip + 1)
 	if !o {
 		path = "???"
 		line = -1
@@ -330,7 +330,7 @@ func Print(level string, skip int, str string) {
 func PrintBytes(level string, skip int, data []byte) {
 	l := GetLog()
 	// 调用堆栈
-	_, path, line, o := runtime.Caller(skip)
+	_, path, line, o := runtime.Caller(skip + 1)
 	if !o {
 		path = "???"
 		line = -1
@@ -346,7 +346,7 @@ func PrintBytes(level string, skip int, data []byte) {
 func Printf(level string, skip int, format string, args ...interface{}) {
 	l := GetLog()
 	// 调用堆栈
-	_, path, line, o := runtime.Caller(skip)
+	_, path, line, o := runtime.Caller(skip + 1)
 	if !o {
 		path = "???"
 		line = -1
@@ -362,7 +362,7 @@ func Printf(level string, skip int, format string, args ...interface{}) {
 func Fprint(level string, skip int, args ...interface{}) {
 	l := GetLog()
 	// 调用堆栈
-	_, path, line, o := runtime.Caller(skip)
+	_, path, line, o := runtime.Caller(skip + 1)
 	if !o {
 		path = "???"
 		line = -1
@@ -375,35 +375,35 @@ func Fprint(level string, skip int, args ...interface{}) {
 }
 
 func Debug(a ...interface{}) {
-	Fprint(DebugLevel, 2, a...)
+	Fprint(DebugLevel, 1, a...)
 }
 
 func Info(a ...interface{}) {
-	Fprint(InfoLevel, 2, a...)
+	Fprint(InfoLevel, 1, a...)
 }
 
 func Warn(a ...interface{}) {
-	Fprint(WarnLevel, 2, a...)
+	Fprint(WarnLevel, 1, a...)
 }
 
 func Error(a ...interface{}) {
-	Fprint(ErrorLevel, 2, a...)
+	Fprint(ErrorLevel, 1, a...)
 }
 
 func DebugSkip(skip int, a ...interface{}) {
-	Fprint(DebugLevel, skip+2, a...)
+	Fprint(DebugLevel, skip+1, a...)
 }
 
 func InfoSkip(skip int, a ...interface{}) {
-	Fprint(InfoLevel, skip+2, a...)
+	Fprint(InfoLevel, skip+1, a...)
 }
 
 func WarnSkip(skip int, a ...interface{}) {
-	Fprint(WarnLevel, skip+2, a...)
+	Fprint(WarnLevel, skip+1, a...)
 }
 
 func ErrorSkip(skip int, a ...interface{}) {
-	Fprint(ErrorLevel, skip+2, a...)
+	Fprint(ErrorLevel, skip+1, a...)
 }
 
 // 如果recover调用函数f

@@ -104,7 +104,7 @@ func Benchmark_LoggerPrint(b *testing.B) {
 			line = -1
 		}
 		l.Reset()
-		l.Header(DebugLevel, path, line)
+		defaultPrintHeader(l, DebugLevel, path, line)
 		l.String("test\n")
 		w.Write(l.b)
 	}
@@ -126,7 +126,7 @@ func Benchmark_Print(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		w.Reset()
-		Print(DebugLevel, BaseSkip, "test")
+		Print(DebugLevel, 0, "test")
 	}
 }
 
@@ -168,7 +168,7 @@ func Benchmark_Fprint(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		w.Reset()
-		Fprint(DebugLevel, BaseSkip, i)
+		Fprint(DebugLevel, 0, i)
 	}
 }
 

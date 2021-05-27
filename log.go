@@ -14,28 +14,18 @@ import "sync"
 
 var (
 	logPool = sync.Pool{}
-
-// 	defaultWriter      io.Writer = os.Stdout   // 默认输出
-// 	defaultPrintHeader           = PrintPathHeader
-// 	SpaceSeparator     byte      = ' '                        // 空格
-// 	DateSeparator      byte      = '-'                        // 日期
-// 	DateTimeSpace      byte      = ' '                        // 日期和时间之间的空格
-// 	TimeSeparator      byte      = ':'                        // 时间
-// 	NanoSecSeparator   byte      = '.'                        // 纳秒
-// 	FileLineSeparator  byte      = ':'                        // 堆栈
-// 	NanosecondLength             = 6                          // 纳秒的格式化长度
-// 	DebugLevel                   = "D"                        // Debug函数的级别
-// 	InfoLevel                    = "I"                        // Info函数的级别
-// 	WarnLevel                    = "W"                        // Warn函数的级别
-// 	ErrorLevel                   = "E"                        // Error函数的级别
-// 	PanicLevel                   = "P"                        // Recover函数的级别
-// 	panicFileLine                = []byte("runtime/panic.go") // Stack函数查找panic的标志
 )
 
 func init() {
 	logPool.New = func() interface{} {
 		return new(Log)
 	}
+}
+
+type Error string
+
+func (e Error) Error() string {
+	return string(e)
 }
 
 // Get a Log from pool.
@@ -48,30 +38,6 @@ func PutLog(l *Log) {
 	l.Reset()
 	logPool.Put(l)
 }
-
-// func PrintPathHeader(l *Log, level, path string, line int) {
-// 	// 级别
-// 	l.b = append(l.b, level...)
-// 	l.b = append(l.b, SpaceSeparator)
-// 	// 时间
-// 	l.Time()
-// 	l.b = append(l.b, SpaceSeparator)
-// 	// 调用堆栈
-// 	l.PathLine(path, line)
-// 	l.b = append(l.b, SpaceSeparator)
-// }
-
-// func PrintFileHeader(l *Log, level, path string, line int) {
-// 	// 级别
-// 	l.b = append(l.b, level...)
-// 	l.b = append(l.b, SpaceSeparator)
-// 	// 时间
-// 	l.Time()
-// 	l.b = append(l.b, SpaceSeparator)
-// 	// 调用堆栈
-// 	l.FileLine(path, line)
-// 	l.b = append(l.b, SpaceSeparator)
-// }
 
 // A buffer used for format a line of logs.
 type Log struct {
@@ -212,31 +178,6 @@ func (l *Log) WriteString(s string) {
 	l.line = append(l.line, s...)
 }
 
-// // 写入日期时间dateTime，格式（year-month-day hour:minute:second.nano），如果NanoSecLength=0则不写入纳秒
-// func (l *Log) Time() {
-// 	t := time.Now()
-// 	year, month, day := t.Date()
-// 	hour, minute, second := t.Clock()
-// 	// 日期
-// 	l.IntL0(year, 4)
-// 	l.b = append(l.b, DateSeparator)
-// 	l.IntL0(int(month), 2)
-// 	l.b = append(l.b, DateSeparator)
-// 	l.IntL0(day, 2)
-// 	l.b = append(l.b, DateTimeSpace)
-// 	// 时间
-// 	l.IntL0(hour, 2)
-// 	l.b = append(l.b, TimeSeparator)
-// 	l.IntL0(minute, 2)
-// 	l.b = append(l.b, TimeSeparator)
-// 	l.IntL0(second, 2)
-// 	// 纳秒
-// 	if NanosecondLength > 0 {
-// 		l.b = append(l.b, NanoSecSeparator)
-// 		l.IntR0(t.Nanosecond(), NanosecondLength)
-// 	}
-// }
-
 // // 写入堆栈信息
 // func (l *Log) Stack() {
 // 	// 所有的堆栈
@@ -320,15 +261,6 @@ func (l *Log) WriteString(s string) {
 // 	l.b = append(l.b, path...)
 // 	l.b = append(l.b, FileLineSeparator)
 // 	l.Int(line)
-// }
-
-// // 设置默认的输出writer
-// func SetWriter(w io.Writer) {
-// 	if w != nil {
-// 		defaultWriter = w
-// 	} else {
-// 		defaultWriter = os.Stdout
-// 	}
 // }
 
 // // 使用默认writer输出日志，level:日志级别，skip:堆栈调用层级，str:日志文本

@@ -1,5 +1,11 @@
 package log
 
+import (
+	"os"
+	"sync"
+	"time"
+)
+
 // import (
 // 	"bytes"
 // 	"errors"
@@ -30,27 +36,29 @@ package log
 // 	Duration   time.Duration `json:"duration"`    // 保存到磁盘的间隔，默认1s
 // }
 
-// // 磁盘日志
-// // 目录结构，/root/date/time.nanosec.log
-// // 当文件大小到达指定的值，就重新写一个新的文件
-// // 自动删除超过指定天数的文件夹
-// // 级别低于指定值不会输出到文件，但是会输出到std流（需配置）
-// // 只会打开一个文件
-// type File struct {
-// 	mutex      sync.Mutex    // 同步锁
-// 	rootDir    string        // 根目录
-// 	curSize    int64         // 文件写入数据大小
-// 	maxSize    int           // 文件最大大小
-// 	maxDay     int           // 最大天数
-// 	buffer     bytes.Buffer  // 缓存
-// 	duration   time.Duration // 保存间隔
-// 	dayFormat  string        // 日期目录的格式
-// 	fileFormat string        // 文件名字格式
-// 	exit       chan struct{} // 退出
-// 	syncTimer  *time.Timer   // 保存数据的计时器
-// 	file       *os.File      // 文件
-// 	closed     bool          // 已经关闭
-// }
+// It is a io.Writer to receive data and save data to local disk file.
+// First it saves the data in memory and outputs it to a file in next output time.
+// If one data file size bigger than File.maxSize,it will create a new one.
+// Auto delete files that have been saved for more than File.day days.
+// The directory structure is
+// root/date.../time...
+type File struct {
+	mutex sync.Mutex
+	// Root directory
+	dir     string
+	maxSize int64
+	maxDay  int
+	// Current data.
+	data []byte
+	// The interval of flush data to file.
+	dur time.Duration
+	// Directory name format,use Time.Format(),only format date
+	dirFormat string
+	// File name format,use Time.Format(),only format time
+	fileFormat string
+	// The file is opened to write.
+	file *os.File
+}
 
 // // 新的日志文件对象
 // func NewFileLogger(cfg *FileConfig) (*File, error) {
@@ -116,12 +124,12 @@ package log
 // 	return f, nil
 // }
 
-// // 写数据到缓存
+// Implements io.Writer interface.
 // func (f *File) Write(b []byte) (int, error) {
-// 	f.mutex.Lock()
-// 	n, e := f.buffer.Write(b)
-// 	f.mutex.Unlock()
-// 	return n, e
+// f.mutex.Lock()
+// n, e := f.buffer.Write(b)
+// f.mutex.Unlock()
+// return n, e
 // }
 
 // // 清理过期的文件

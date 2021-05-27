@@ -1,212 +1,193 @@
 package log
 
 import (
+	"errors"
+	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
 
-// import (
-// 	"bytes"
-// 	"errors"
-// 	"fmt"
-// 	"io"
-// 	"io/ioutil"
-// 	"os"
-// 	"path/filepath"
-// 	"sync"
-// 	"time"
-// )
-
-// const (
-// 	day = time.Hour * 24
-// )
-
-// var (
-// 	errFileLoggerClosed = errors.New("file logger has been closed")
-// )
-
-// // 配置，文件日志
-// type FileConfig struct {
-// 	Dir        string        `json:"dir"`         // 根目录，默认log
-// 	Size       int           `json:"size"`        // 每个文件的大小，默认1m
-// 	Day        int           `json:"day"`         // 保存的天数，默认1
-// 	DayFormat  string        `json:"day_format"`  // 日期目录命名规则
-// 	FileFormat string        `json:"file_format"` // 日期目录下文件的命名规则
-// 	Duration   time.Duration `json:"duration"`    // 保存到磁盘的间隔，默认1s
-// }
+// Create a new File output.
+func NewFileLogger(dir string, maxFileSize, maxDay int, dur time.Duration) (*File, error) {
+	f := new(File)
+	go f.FlushLoop(dir, maxFileSize, maxDay, dur)
+	return f, nil
+}
 
 // It is a io.Writer to receive data and save data to local disk file.
 // First it saves the data in memory and outputs it to a file in next output time.
 // If one data file size bigger than File.maxSize,it will create a new one.
-// Auto delete files that have been saved for more than File.day days.
-// The directory structure is
-// root/date.../time...
+// Auto delete files saved before File.day days.
+// The directory structure is "root/date/time".
 type File struct {
-	mutex sync.Mutex
-	// Root directory
-	dir     string
-	maxSize int64
-	maxDay  int
-	// Current data.
+	lock sync.Mutex
+	wait sync.WaitGroup
+	// Timer for flush loop.
+	timer *time.Ticker
+	// Close signal.
+	exit chan struct{}
+	// If closed.
+	ok bool
+	// Root directory.
+	rootDir string
+	// Max size of a log file.
+	maxFileSize int
+	// Max days to keep file.
+	maxKeepDay time.Duration
+	// Log data.
 	data []byte
-	// The interval of flush data to file.
-	dur time.Duration
-	// Directory name format,use Time.Format(),only format date
-	dirFormat string
-	// File name format,use Time.Format(),only format time
-	fileFormat string
 	// The file is opened to write.
 	file *os.File
 }
 
-// // 新的日志文件对象
-// func NewFileLogger(cfg *FileConfig) (*File, error) {
-// 	if cfg.Day < 1 {
-// 		cfg.Day = 1
-// 	}
-// 	if cfg.Size < 1 {
-// 		cfg.Size = 1024 * 1024
-// 	}
-// 	if cfg.Duration < 1 {
-// 		cfg.Duration = 1000
-// 	}
-// 	if cfg.DayFormat == "" {
-// 		cfg.DayFormat = "20060102"
-// 	}
-// 	if cfg.FileFormat == "" {
-// 		cfg.FileFormat = "150405.999999999"
-// 	}
-// 	if cfg.Dir == "" {
-// 		cfg.Dir = "log"
-// 	}
-// 	// 对象
-// 	f := &File{
-// 		rootDir:    cfg.Dir,
-// 		exit:       make(chan struct{}),
-// 		maxDay:     cfg.Day,
-// 		maxSize:    cfg.Size,
-// 		duration:   cfg.Duration * time.Millisecond,
-// 		dayFormat:  cfg.DayFormat,
-// 		fileFormat: cfg.FileFormat,
-// 	}
-// 	f.newFile()
-// 	// 保存routine
-// 	go func(f *File) {
-// 		defer Recover(func() {
-// 			f.syncTimer.Stop()
-// 			close(f.exit)
-// 		})
-// 		f.syncTimer = time.NewTimer(f.duration)
-// 		for !f.closed {
-// 			<-f.syncTimer.C
-// 			// 保存数据到文件
-// 			f.mutex.Lock()
-// 			if f.buffer.Len() > 0 {
-// 				// 数据写入文件
-// 				n, err := io.Copy(f.file, &f.buffer)
-// 				f.printError(err)
-// 				f.curSize += n
-// 				// 无论写入成功与否，清空缓存
-// 				f.buffer.Reset()
-// 				// 写入的数据到达最大，开始新文件
-// 				if f.curSize >= int64(f.maxSize) {
-// 					f.newFile()
-// 				}
-// 			}
-// 			f.mutex.Unlock()
-// 			// 检查过期的日志
-// 			f.checkExpired()
-// 			// 重新计时
-// 			f.syncTimer.Reset(f.duration)
-// 		}
-// 	}(f)
-// 	return f, nil
-// }
+func (f *File) init(rootDir string, maxFileSize, maxKeepDay int, dur time.Duration) {
+	f.ok = true
+	f.rootDir = rootDir
+	f.maxFileSize = maxFileSize
+	if f.maxFileSize < 1 {
+		f.maxFileSize = 1024 * 1024
+	}
+	f.maxKeepDay = time.Duration(maxKeepDay)
+	if f.maxKeepDay < 1 {
+		f.maxKeepDay = 1
+	}
+	f.maxKeepDay *= -time.Hour * 24
+	f.timer = time.NewTicker(dur)
+	f.exit = make(chan struct{})
+}
+
+// Flush memory data into file loop.
+// Arg dur is the flush interval.
+// Arg dir is the root of log dir.
+func (f *File) FlushLoop(dir string, maxFileSize, maxDay int, dur time.Duration) {
+	f.wait.Add(1)
+	defer f.wait.Done()
+	startTime := time.Now()
+	// Init if not
+	f.lock.Lock()
+	if !f.ok {
+		f.init(dir, maxFileSize, maxDay, dur)
+	} else {
+		// Routine has been called.
+		f.lock.Unlock()
+		return
+	}
+	// Check expire file first.
+	f.checkExpire(startTime)
+	// Open file.
+	f.openFile()
+	f.lock.Unlock()
+	// Loop
+	for f.ok {
+		select {
+		case now := <-f.timer.C:
+			// Time to flush data.
+			f.lock.Lock()
+			f.flushData()
+			// Another day.
+			if now.Day() != startTime.Day() {
+				f.checkExpire(now)
+				startTime = now
+			}
+			f.lock.Unlock()
+		case <-f.exit:
+			// Close() called.
+		}
+	}
+}
 
 // Implements io.Writer interface.
-// func (f *File) Write(b []byte) (int, error) {
-// f.mutex.Lock()
-// n, e := f.buffer.Write(b)
-// f.mutex.Unlock()
-// return n, e
-// }
+// Append data b to memory.
+func (f *File) Write(b []byte) (int, error) {
+	f.lock.Lock()
+	f.data = append(f.data, b...)
+	if len(f.data) > f.maxFileSize {
+		f.flushData()
+		f.closeFile()
+		f.openFile()
+	}
+	f.lock.Unlock()
+	return len(b), nil
+}
 
-// // 清理过期的文件
-// func (f *File) checkExpired() {
-// 	// 检查过期的
-// 	fs, err := ioutil.ReadDir(f.rootDir)
-// 	if nil != err {
-// 		// 目录不存在，创建
-// 		if os.IsNotExist(err) {
-// 			err = os.MkdirAll(f.rootDir, os.ModePerm)
-// 			if nil == err {
-// 				return
-// 			}
-// 		}
-// 		_, _ = os.Stderr.WriteString(err.Error())
-// 		return
-// 	}
-// 	t := time.Now().Add(-day)
-// 	for i := 0; i < len(fs); i++ {
-// 		if fs[i].ModTime().Sub(t) < 0 {
-// 			f.printError(os.RemoveAll(filepath.Join(f.rootDir, fs[i].Name())))
-// 		}
-// 	}
-// }
+// Implements io.Closer interface.
+// Flush memory data and close file.
+// Wait for flush routine exit.
+func (f *File) Close() error {
+	f.lock.Lock()
+	if !f.ok {
+		f.lock.Unlock()
+		return errors.New("file has been closed")
+	}
+	f.ok = false
+	f.lock.Unlock()
+	// Wait for saving routine exit.
+	f.wait.Wait()
+	// Stop timer.
+	f.timer.Stop()
+	// Close file.
+	f.closeFile()
+	return nil
+}
 
-// // 将缓存的数据保存到磁盘文件中
-// func (f *File) newFile() {
-// 	// 关闭旧文件
-// 	f.closeFile()
-// 	// 时间
-// 	now := time.Now()
-// 	// 创建日期目录
-// 	dateDir := filepath.Join(f.rootDir, now.Format(f.dayFormat))
-// 	err := os.MkdirAll(dateDir, os.ModePerm)
-// 	if nil != err {
-// 		_, _ = fmt.Fprintln(os.Stderr, err)
-// 		return
-// 	}
-// 	// 新的日志文件
-// 	timeFile := filepath.Join(dateDir, now.Format(f.fileFormat))
-// 	f.file, err = os.OpenFile(timeFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
-// 	if nil != err {
-// 		_, _ = fmt.Fprintln(os.Stderr, err)
-// 		return
-// 	}
-// }
+// Check and remove expired directory.
+func (f *File) checkExpire(now time.Time) {
+	files, err := ioutil.ReadDir(f.rootDir)
+	if nil != err {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	delTime := time.Now().Add(f.maxKeepDay)
+	for i := 0; i < len(files); i++ {
+		// Remove all file which modify time is before delTime.
+		if files[i].ModTime().Sub(delTime) < 0 {
+			err = os.RemoveAll(filepath.Join(f.rootDir, files[i].Name()))
+			if nil != err {
+				fmt.Fprintln(os.Stderr, err)
+			}
+		}
+	}
+}
 
-// // 关闭文件
-// func (f *File) closeFile() {
-// 	if nil != f.file {
-// 		// 把剩下的缓存写入文件，再关闭
-// 		_, err := io.Copy(f.file, &f.buffer)
-// 		f.printError(err)
-// 		f.printError(f.file.Close())
-// 		f.file = nil
-// 	}
-// }
+// Close old file and open a new file.
+func (f *File) openFile() {
+	now := time.Now()
+	// Create directory first.
+	dateDir := filepath.Join(f.rootDir, now.Format("20060102"))
+	err := os.MkdirAll(dateDir, os.ModePerm)
+	if nil != err {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	// Create log file
+	timeFile := filepath.Join(dateDir, now.Format("150405"))
+	f.file, err = os.OpenFile(timeFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
+	if nil != err {
+		fmt.Fprintln(os.Stderr, err)
+	}
+}
 
-// func (f *File) Close() error {
-// 	f.mutex.Lock()
-// 	if f.closed {
-// 		f.mutex.Unlock()
-// 		return errFileLoggerClosed
-// 	}
-// 	f.closed = true
-// 	f.mutex.Unlock()
-// 	// 退出
-// 	f.syncTimer.Reset(0)
-// 	// 等待routine退出
-// 	<-f.exit
-// 	// 关闭文件
-// 	f.closeFile()
-// 	return nil
-// }
+// Close file if is opened.
+func (f *File) closeFile() {
+	if nil != f.file {
+		// Rest data in the memory.
+		if len(f.data) > 0 {
+			f.file.Write(f.data)
+			f.data = f.data[:0]
+		}
+		f.file.Close()
+		f.file = nil
+	}
+}
 
-// func (f *File) printError(err error) {
-// 	if err != nil {
-// 		_, _ = fmt.Fprintln(os.Stderr, err)
-// 	}
-// }
+// Flush data to file.
+func (f *File) flushData() {
+	_, err := f.file.Write(f.data)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	f.data = f.data[:0]
+}

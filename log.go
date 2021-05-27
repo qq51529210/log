@@ -2,16 +2,6 @@ package log
 
 import "sync"
 
-// import (
-// 	"bytes"
-// 	"fmt"
-// 	"io"
-// 	"os"
-// 	"runtime"
-// 	"sync"
-// 	"time"
-// )
-
 var (
 	logPool = sync.Pool{}
 )
@@ -105,7 +95,9 @@ func (l *Log) WriteRightAlignInt(integer, length int) {
 
 // Write a integer into buffer with left align format.
 // If len(integer) < length,add 0 to the right.
-// Example: 12 -> 1200 while length=4.
+// Example:
+//	12 -> 1200 while length=4.
+//	1234 -> 12 while length=2.
 func (l *Log) WriteLeftAlignInt(integer, length int) {
 	// Zero.
 	if integer == 0 {
@@ -126,12 +118,17 @@ func (l *Log) WriteLeftAlignInt(integer, length int) {
 		l.buff = append(l.buff, byte('0'+integer%10))
 		integer /= 10
 	}
-	// buff[4,3,2,1]->line[1,2,3,4]
-	for i := len(l.buff) - 1; i >= 0; i-- {
-		l.line = append(l.line, l.buff[i])
-	}
-	// Add 0 to the right if len(integer) < length
-	if length > len(l.buff) {
+	if length < len(l.buff) {
+		// buff[4,3,2,1]->line[1,2]
+		for i := len(l.buff) - 1; i >= len(l.buff)-length; i-- {
+			l.line = append(l.line, l.buff[i])
+		}
+	} else {
+		// buff[4,3,2,1]->line[1,2,3,4]
+		for i := len(l.buff) - 1; i >= 0; i-- {
+			l.line = append(l.line, l.buff[i])
+		}
+		// Add 0 to the right.
 		for i := len(l.buff); i < length; i++ {
 			l.line = append(l.line, '0')
 		}

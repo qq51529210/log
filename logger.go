@@ -1,7 +1,6 @@
 package log
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -9,11 +8,7 @@ import (
 	"time"
 )
 
-var (
-	errorLoggerClosed = errors.New("logger has been closed")
-)
-
-// Create a new Logger with default TimeHeader
+// Create a new Logger with PrintTimeHeader and PrintNilCallerHeader
 func NewLogger(w io.Writer) *Logger {
 	l := &Logger{Writer: w}
 	l.PrintTimeHeader = PrintTimeHeader
@@ -21,8 +16,9 @@ func NewLogger(w io.Writer) *Logger {
 	return l
 }
 
-// This logger format is "date time log".
-// Example: "2006-01-02 15:04:05.123456 this is a log."
+// This logger format is "date_time caller_filepath_line log".
+// Example: "2006-01-02 15:04:05.123456 /myproject/awesome.go:127 this is a log."
+// You can change time format and caller format by set Logger.PrintTimeHeader and Logger.PrintCallerHeader.
 type Logger struct {
 	// Where the log output.
 	io.Writer
@@ -32,20 +28,18 @@ type Logger struct {
 	PrintCallerHeader func(*Log, int)
 }
 
-// Format s to a log,add '\n' in the end,output to writer.
-// The error return by writer is ignored.
-func (l *Logger) Print(s string) {
+// Use fmt.Fprint() to format and add '\n' in the end.
+func (l *Logger) Print(a ...interface{}) {
 	log := GetLog()
 	l.PrintTimeHeader(log)
 	l.PrintCallerHeader(log, 2)
-	log.WriteString(s)
+	fmt.Fprint(log, a...)
 	log.line = append(log.line, '\n')
 	l.Writer.Write(log.line)
 	PutLog(log)
 }
 
-// Format f and a to a log,add '\n' in the end,output to writer.
-// The error return by writer is ignored.
+// Use fmt.Fprintf() to format and add '\n' in the end.
 func (l *Logger) Printf(f string, a ...interface{}) {
 	log := GetLog()
 	l.PrintTimeHeader(log)
@@ -56,19 +50,7 @@ func (l *Logger) Printf(f string, a ...interface{}) {
 	PutLog(log)
 }
 
-// Format a... to a log,add '\n' in the end,output to writer.
-// The error return by writer is ignored.
-func (l *Logger) Fprint(a ...interface{}) {
-	log := GetLog()
-	l.PrintTimeHeader(log)
-	l.PrintCallerHeader(log, 2)
-	fmt.Fprint(log, a...)
-	log.line = append(log.line, '\n')
-	l.Writer.Write(log.line)
-	PutLog(log)
-}
-
-// Print date time like "2006-01-02 15:04:05.123456".
+// Format time.Now() into log like "2006-01-02 15:04:05.123456".
 func PrintTimeHeader(log *Log) {
 	t := time.Now()
 	year, month, day := t.Date()
@@ -88,7 +70,7 @@ func PrintTimeHeader(log *Log) {
 	log.WriteRightAlignInt(second, 2)
 	// Nanosecond
 	log.line = append(log.line, '.')
-	log.WriteLeftAlignInt(t.Nanosecond(), 9)
+	log.WriteLeftAlignInt(t.Nanosecond(), 6)
 	// Space
 	log.line = append(log.line, ' ')
 }
@@ -96,8 +78,8 @@ func PrintTimeHeader(log *Log) {
 // Do nothing.
 func PrintNilCallerHeader(log *Log, skip int) {}
 
-// Print caller file path and line like "/myproject/awesome.go:127".
-func PrintFilePathLineCallerHeader(log *Log, skip int) {
+// Format caller file path and line like "/myproject/awesome.go:127" into log.
+func PrintFilePathCallerHeader(log *Log, skip int) {
 	_, path, line, ok := runtime.Caller(skip)
 	if !ok {
 		path = "???"
@@ -110,7 +92,7 @@ func PrintFilePathLineCallerHeader(log *Log, skip int) {
 	log.line = append(log.line, ' ')
 }
 
-// Print caller file name and line like "awesome.go:127".
+// Format caller file name and line like "awesome.go:127" into log.
 func PrintFileNameCallerHeader(log *Log, skip int) {
 	_, path, line, ok := runtime.Caller(skip)
 	if !ok {
@@ -120,6 +102,7 @@ func PrintFileNameCallerHeader(log *Log, skip int) {
 		for i := len(path) - 1; i >= 0; i-- {
 			if path[i] == filepath.Separator {
 				path = path[i+1:]
+				break
 			}
 		}
 	}

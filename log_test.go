@@ -40,8 +40,8 @@ func TestLog_WriteLeftAlignInt(t *testing.T) {
 	}
 
 	log.Reset()
-	log.WriteLeftAlignInt(-1234, 3)
-	if log.String() != "-1234" {
+	log.WriteLeftAlignInt(-1234, 2)
+	if log.String() != "-12" {
 		t.FailNow()
 	}
 

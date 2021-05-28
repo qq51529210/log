@@ -6,24 +6,31 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 )
 
-// Create a new File output.
-func NewFileLogger(dir string, maxFileSize, maxDay int, dur time.Duration) (*File, error) {
+const (
+	defaultMaxFileSize = 1024 * 1024
+)
+
+var (
+	errFileClosed = errors.New("file has been closed")
+)
+
+// Create a new File output. FlushLoop has been called inside as a goutine.
+// Parameters description reference File.FlushLoop().
+func NewFileLogger(rootDir string, maxFileSize, maxDay int, dur time.Duration) (*File, error) {
 	f := new(File)
-	go f.FlushLoop(dir, maxFileSize, maxDay, dur)
+	go f.FlushAndCheckLoop(rootDir, maxFileSize, maxDay, dur)
 	return f, nil
 }
 
-// It is a io.Writer to receive data and save data to local disk file.
-// First it saves the data in memory and outputs it to a file in next output time.
-// If one data file size bigger than File.maxSize,it will create a new one.
-// Auto delete files saved before File.day days.
-// The directory structure is "root/date/time".
+// File implements io.Writer to receive data in memory and  outputs it to a file in next output time.
 type File struct {
 	lock sync.Mutex
+	// Wait for FlushLoop routine exit.
 	wait sync.WaitGroup
 	// Timer for flush loop.
 	timer *time.Ticker
@@ -37,110 +44,117 @@ type File struct {
 	maxFileSize int
 	// Max days to keep file.
 	maxKeepDay time.Duration
-	// Log data.
+	// Log data, waitting for flush.
 	data []byte
 	// The file is opened to write.
 	file *os.File
 }
 
+// Parameters description reference File.FlushLoop().
 func (f *File) init(rootDir string, maxFileSize, maxKeepDay int, dur time.Duration) {
 	f.ok = true
 	f.rootDir = rootDir
 	f.maxFileSize = maxFileSize
 	if f.maxFileSize < 1 {
-		f.maxFileSize = 1024 * 1024
+		f.maxFileSize = defaultMaxFileSize
 	}
 	f.maxKeepDay = time.Duration(maxKeepDay)
 	if f.maxKeepDay < 1 {
 		f.maxKeepDay = 1
 	}
-	f.maxKeepDay *= -time.Hour * 24
+	f.maxKeepDay *= time.Hour * 24
 	f.timer = time.NewTicker(dur)
 	f.exit = make(chan struct{})
 }
 
-// Flush memory data into file loop.
-// Arg dur is the flush interval.
-// Arg dir is the root of log dir.
-func (f *File) FlushLoop(dir string, maxFileSize, maxDay int, dur time.Duration) {
+// FlushLoop flush memory data into file and check expired logs.
+// rootDir is the root directory of all log files. rootDir has many dateDir, dateDir has many timeFile.
+// maxFileSize is the max size of a log file, if output file's size is greater that it, a new log file will be created.
+// maxDay is the max days to keep log file.
+// dur is the interval to flush data.
+func (f *File) FlushAndCheckLoop(rootDir string, maxFileSize, maxDay int, dur time.Duration) {
 	f.wait.Add(1)
 	defer f.wait.Done()
-	startTime := time.Now()
-	// Init if not
+	// Init data.
 	f.lock.Lock()
 	if !f.ok {
-		f.init(dir, maxFileSize, maxDay, dur)
+		f.init(rootDir, maxFileSize, maxDay, dur)
 	} else {
 		// Routine has been called.
 		f.lock.Unlock()
 		return
 	}
-	// Check expire file first.
-	f.checkExpire(startTime)
 	// Open file.
 	f.openFile()
 	f.lock.Unlock()
-	// Loop
+	// Check expire file.
+	checkTime := time.Now()
+	f.checkExpiredFile(checkTime)
 	for f.ok {
 		select {
 		case now := <-f.timer.C:
 			// Time to flush data.
 			f.lock.Lock()
 			f.flushData()
-			// Another day.
-			if now.Day() != startTime.Day() {
-				f.checkExpire(now)
-				startTime = now
-			}
 			f.lock.Unlock()
+			// Another day.
+			if now.Day() != checkTime.Day() {
+				f.checkExpiredFile(now)
+				checkTime = now
+			}
 		case <-f.exit:
 			// Close() called.
 		}
 	}
 }
 
-// Implements io.Writer interface.
 // Append data b to memory.
 func (f *File) Write(b []byte) (int, error) {
 	f.lock.Lock()
-	f.data = append(f.data, b...)
-	if len(f.data) > f.maxFileSize {
-		f.flushData()
-		f.closeFile()
-		f.openFile()
+	if f.ok {
+		if len(b)+len(f.data) >= f.maxFileSize {
+			// Memory data is greater than maxFileSize
+			f.flushData()
+			f.closeFile()
+			f.openFile()
+		}
+		f.data = append(f.data, b...)
+		f.lock.Unlock()
+		return len(b), nil
 	}
 	f.lock.Unlock()
-	return len(b), nil
+	return 0, errFileClosed
 }
 
-// Implements io.Closer interface.
-// Flush memory data and close file.
-// Wait for flush routine exit.
+// Change File state and wait for FlushLoop exit.
 func (f *File) Close() error {
 	f.lock.Lock()
 	if !f.ok {
 		f.lock.Unlock()
-		return errors.New("file has been closed")
+		return errFileClosed
 	}
 	f.ok = false
 	f.lock.Unlock()
-	// Wait for saving routine exit.
+	close(f.exit)
+	// Waitting for FlushLoop exit.
 	f.wait.Wait()
 	// Stop timer.
 	f.timer.Stop()
+	// Flush rest of data.
+	f.flushData()
 	// Close file.
 	f.closeFile()
 	return nil
 }
 
-// Check and remove expired directory.
-func (f *File) checkExpire(now time.Time) {
+// Check and remove expired logs.
+func (f *File) checkExpiredFile(now time.Time) {
 	files, err := ioutil.ReadDir(f.rootDir)
 	if nil != err {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	delTime := time.Now().Add(f.maxKeepDay)
+	delTime := now.Add(-f.maxKeepDay)
 	for i := 0; i < len(files); i++ {
 		// Remove all file which modify time is before delTime.
 		if files[i].ModTime().Sub(delTime) < 0 {
@@ -152,18 +166,18 @@ func (f *File) checkExpire(now time.Time) {
 	}
 }
 
-// Close old file and open a new file.
+// Open a new file.
 func (f *File) openFile() {
 	now := time.Now()
-	// Create directory first.
+	// Create "date" directory first.
 	dateDir := filepath.Join(f.rootDir, now.Format("20060102"))
 	err := os.MkdirAll(dateDir, os.ModePerm)
 	if nil != err {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	// Create log file
-	timeFile := filepath.Join(dateDir, now.Format("150405"))
+	// Create "time" log file
+	timeFile := filepath.Join(dateDir, strconv.FormatInt(now.Unix(), 10))
 	f.file, err = os.OpenFile(timeFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
 	if nil != err {
 		fmt.Fprintln(os.Stderr, err)
@@ -173,11 +187,6 @@ func (f *File) openFile() {
 // Close file if is opened.
 func (f *File) closeFile() {
 	if nil != f.file {
-		// Rest data in the memory.
-		if len(f.data) > 0 {
-			f.file.Write(f.data)
-			f.data = f.data[:0]
-		}
 		f.file.Close()
 		f.file = nil
 	}

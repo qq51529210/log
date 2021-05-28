@@ -216,14 +216,19 @@ func PrintFileNameCallerHeader(log *Log, skip int) {
 	log.line = append(log.line, ' ')
 }
 
-// Set default logger.PrintCallerHeader.
+// Set defaultLogger.PrintCallerHeader.
 func SetPrintCallerHeader(printCallerHeader func(*Log, int)) {
 	defultLogger.PrintCallerHeader = printCallerHeader
 }
 
-// Set default logger.PrintTimeHeader.
+// Set defaultLogger.PrintTimeHeader.
 func SetPrintTimeHeader(printTimeHeader func(*Log)) {
 	defultLogger.PrintTimeHeader = printTimeHeader
+}
+
+// Set ddefaultLogger.Writer.
+func SetWriter(w io.Writer) {
+	defultLogger.Writer = w
 }
 
 // defaultLogger.Print

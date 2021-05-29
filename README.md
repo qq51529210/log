@@ -19,19 +19,11 @@ logger.PrintCallerHeader = func(*Log,int){}
 logger.PrintCallerHeader = PrintFilePathCallerHeader
 ```
 
-## Write
+## Writer
 
-- [File](./file_writer.go)
+- [File](./file.go)
 
   Save log on local disk.
-
-- Flume
-
-  Save log to Flume.To be implemented.
-
-- Kafka
-
-  Save log to Kafka.To be implemented.
 
 ## Benchmark  
 

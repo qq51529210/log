@@ -9,52 +9,68 @@ import (
 
 var (
 	stdLogger = log.New(os.Stderr, "", log.LstdFlags|log.Lmicroseconds)
-	logger    = NewLogger(os.Stderr)
+	logger    = NewLogger(os.Stderr, nil, nil)
 )
 
 func init() {
-	logger.PrintCallerHeader = PrintFilePathCallerHeader
-	// logger.PrintCallerHeader = PrintFileNameCallerHeader
+	logger.fmtTimeHeader = FormatTimeHeader
+	logger.fmtStackHeader = FormatFilePathStackHeader
+	// logger.callerHeaderFunc = PrintFileNameCallerHeader
 	stdLogger.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Llongfile)
 	// stdLogger.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
-	SetPrintCallerHeader(PrintFilePathCallerHeader)
 }
 
 func Test_Logger(t *testing.T) {
 	// Check out std output.
-	logger.Print("logger.Print ", 1)
-	logger.Printf("logger.Printf %d", 2)
+	logger.Print("logger.Print")
+	logger.Fprint("logger.Fprint ", 1)
+	logger.Fprintf("logger.Fprintf %d", 2)
+	logger.PrintStack(0, "logger.PrintStack")
+	logger.FprintStack(0, "logger.FprintStack ", 1)
+	logger.FprintfStack(0, "logger.FprintfStack %d", 2)
 	stdLogger.Println("stdLogger.Println ", 1)
 	stdLogger.Printf("stdLogger.Printf %d\n", 2)
 
 	logger.Debug("logger.Debug ", 1)
-	logger.Debugf("logger.Debugf %d", 2)
+	logger.DebugStack(0, "logger.DebugDebugStack ", 2)
 	logger.Info("logger.Info ", 1)
-	logger.Infof("logger.Infof %d", 2)
+	logger.InfoStack(0, "logger.InfoStack ", 2)
 	logger.Warn("logger.Warn ", 1)
-	logger.Warnf("logger.Warnf %d", 2)
+	logger.WarnStack(0, "logger.WarnStack", 2)
 	logger.Error("logger.Error ", 1)
-	logger.Errorf("logger.Errorf %d", 2)
+	logger.ErrorStack(0, "logger.ErrorStack", 2)
 
-	Print("Print ", 1)
-	Printf("Printf %d", 2)
+	Print("Print")
+	Fprint("Printf ", 2)
+	Fprintf("Fprintf %d", 2)
 	Debug("Debug ", 1)
-	Debugf("Debugf %d", 2)
+	DebugStack(0, "DebugStack ", 2)
 	Info("Info ", 1)
-	Infof("Infof %d", 2)
+	InfoStack(0, "InfoStack ", 2)
 	Warn("Warn ", 1)
-	Warnf("Warnf %d", 2)
+	WarnStack(0, "WarnStack ", 2)
 	Error("Error ", 1)
-	Errorf("Errorf %d", 2)
+	ErrorStack(0, "ErrorStack ", 2)
 }
 
 func Benchmark_Logger_Print(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	var output bytes.Buffer
-	logger.Writer = &output
+	logger.out = &output
 	for i := 0; i < b.N; i++ {
-		logger.Print("Print ", 1)
+		logger.Print("Print")
+		output.Reset()
+	}
+}
+
+func Benchmark_Logger_Fprint(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	var output bytes.Buffer
+	logger.out = &output
+	for i := 0; i < b.N; i++ {
+		logger.Fprint("Print ", 1)
 		output.Reset()
 	}
 }
@@ -74,9 +90,9 @@ func Benchmark_Logger_Printf(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	var output bytes.Buffer
-	logger.Writer = &output
+	logger.out = &output
 	for i := 0; i < b.N; i++ {
-		logger.Printf("Printf %d", 2)
+		logger.Fprintf("Printf %d", 2)
 		output.Reset()
 	}
 }

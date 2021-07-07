@@ -247,12 +247,40 @@ func (l *Logger) printLevel(v byte, n int, a ...interface{}) {
 	PutLog(log)
 }
 
+func (l *Logger) printfLevel(v byte, n int, f string, a ...interface{}) {
+	log := GetLog()
+	// Level
+	log.line = append(log.line, v)
+	log.line = append(log.line, ' ')
+	// Time
+	l.fmtTimeHeader(log)
+	log.line = append(log.line, ' ')
+	// Caller
+	l.fmtStackHeader(log, n)
+	log.line = append(log.line, ' ')
+	// Log
+	fmt.Fprintf(log, f, a...)
+	// Endline
+	log.line = append(log.line, '\n')
+	// Output
+	l.out.Write(log.line)
+	PutLog(log)
+}
+
 func (l *Logger) Debug(a ...interface{}) {
 	l.printLevel('D', 3, a...)
 }
 
 func (l *Logger) DebugStack(skip int, a ...interface{}) {
 	l.printLevel('D', skip+3, a...)
+}
+
+func (l *Logger) Debugf(f string, a ...interface{}) {
+	l.printfLevel('D', 3, f, a...)
+}
+
+func (l *Logger) DebugfStack(skip int, f string, a ...interface{}) {
+	l.printfLevel('D', skip+3, f, a...)
 }
 
 func (l *Logger) Info(a ...interface{}) {
@@ -263,6 +291,14 @@ func (l *Logger) InfoStack(skip int, a ...interface{}) {
 	l.printLevel('I', skip+3, a...)
 }
 
+func (l *Logger) Infof(f string, a ...interface{}) {
+	l.printfLevel('I', 3, f, a...)
+}
+
+func (l *Logger) InfofStack(skip int, f string, a ...interface{}) {
+	l.printfLevel('I', skip+3, f, a...)
+}
+
 func (l *Logger) Warn(a ...interface{}) {
 	l.printLevel('W', 3, a...)
 }
@@ -271,12 +307,28 @@ func (l *Logger) WarnStack(skip int, a ...interface{}) {
 	l.printLevel('W', skip+3, a...)
 }
 
+func (l *Logger) Warnf(f string, a ...interface{}) {
+	l.printfLevel('W', 3, f, a...)
+}
+
+func (l *Logger) WarnfStack(skip int, f string, a ...interface{}) {
+	l.printfLevel('W', skip+3, f, a...)
+}
+
 func (l *Logger) Error(a ...interface{}) {
 	l.printLevel('E', 3, a...)
 }
 
 func (l *Logger) ErrorStack(skip int, a ...interface{}) {
 	l.printLevel('E', skip+3, a...)
+}
+
+func (l *Logger) Errorf(f string, a ...interface{}) {
+	l.printfLevel('E', 3, f, a...)
+}
+
+func (l *Logger) ErrorfStack(skip int, f string, a ...interface{}) {
+	l.printfLevel('E', skip+3, f, a...)
 }
 
 func SetFormatStackHeader(formatStackHeader func(*Log, int)) {
@@ -304,33 +356,65 @@ func Fprintf(f string, a ...interface{}) {
 }
 
 func Debug(a ...interface{}) {
-	defultLogger.DebugStack(1, a...)
+	defultLogger.printLevel('D', 3, a...)
 }
 
 func DebugStack(skip int, a ...interface{}) {
-	defultLogger.DebugStack(skip+1, a...)
+	defultLogger.printLevel('D', skip+3, a...)
+}
+
+func Debugf(f string, a ...interface{}) {
+	defultLogger.printfLevel('D', 3, f, a...)
+}
+
+func DebugfStack(skip int, f string, a ...interface{}) {
+	defultLogger.printfLevel('D', skip+3, f, a...)
 }
 
 func Info(a ...interface{}) {
-	defultLogger.InfoStack(1, a...)
+	defultLogger.printLevel('I', 3, a...)
 }
 
 func InfoStack(skip int, a ...interface{}) {
-	defultLogger.InfoStack(skip+1, a...)
+	defultLogger.printLevel('I', skip+3, a...)
+}
+
+func Infof(f string, a ...interface{}) {
+	defultLogger.printfLevel('I', 3, f, a...)
+}
+
+func InfofStack(skip int, f string, a ...interface{}) {
+	defultLogger.printfLevel('I', skip+3, f, a...)
 }
 
 func Warn(a ...interface{}) {
-	defultLogger.WarnStack(1, a...)
+	defultLogger.printLevel('W', 3, a...)
 }
 
 func WarnStack(skip int, a ...interface{}) {
-	defultLogger.WarnStack(skip+1, a...)
+	defultLogger.printLevel('W', skip+3, a...)
+}
+
+func Warnf(f string, a ...interface{}) {
+	defultLogger.printfLevel('W', 3, f, a...)
+}
+
+func WarnfStack(skip int, f string, a ...interface{}) {
+	defultLogger.printfLevel('W', skip+3, f, a...)
 }
 
 func Error(a ...interface{}) {
-	defultLogger.ErrorStack(1, a...)
+	defultLogger.printLevel('E', 3, a...)
 }
 
 func ErrorStack(skip int, a ...interface{}) {
-	defultLogger.ErrorStack(skip+1, a...)
+	defultLogger.printLevel('E', skip+3, a...)
+}
+
+func Errorf(f string, a ...interface{}) {
+	defultLogger.printfLevel('E', 3, f, a...)
+}
+
+func ErrorfStack(skip int, f string, a ...interface{}) {
+	defultLogger.printfLevel('E', skip+3, f, a...)
 }

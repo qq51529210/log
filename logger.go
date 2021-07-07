@@ -127,7 +127,7 @@ func (l *Logger) Print(s string) {
 	PutLog(log)
 }
 
-// Format is "fmtTimeHeader() fmtStackHeader() fmt.Fprint()\n".
+// Format is "fmtTimeHeader() fmtStackHeader() fmt.Fprintln()".
 func (l *Logger) Fprint(a ...interface{}) {
 	log := GetLog()
 	// Time
@@ -139,9 +139,7 @@ func (l *Logger) Fprint(a ...interface{}) {
 	// Space
 	log.line = append(log.line, ' ')
 	// Log
-	fmt.Fprint(log, a...)
-	// Endline
-	log.line = append(log.line, '\n')
+	fmt.Fprintln(log, a...)
 	// Output
 	l.out.Write(log.line)
 	PutLog(log)
@@ -187,7 +185,7 @@ func (l *Logger) PrintStack(skip int, s string) {
 	PutLog(log)
 }
 
-// Format is "fmtTimeHeader() fmtStackHeader(skip) fmt.Fprint()\n".
+// Format is "fmtTimeHeader() fmtStackHeader(skip) fmt.Fprintln()".
 func (l *Logger) FprintStack(skip int, a ...interface{}) {
 	log := GetLog()
 	// Time
@@ -199,9 +197,7 @@ func (l *Logger) FprintStack(skip int, a ...interface{}) {
 	// Space
 	log.line = append(log.line, ' ')
 	// Log
-	fmt.Fprint(log, a...)
-	// Endline
-	log.line = append(log.line, '\n')
+	fmt.Fprintln(log, a...)
 	// Output
 	l.out.Write(log.line)
 	PutLog(log)
@@ -227,7 +223,8 @@ func (l *Logger) FprintfStack(skip int, f string, a ...interface{}) {
 	PutLog(log)
 }
 
-func (l *Logger) printLevel(v byte, n int, a ...interface{}) {
+// Format is "v fmtTimeHeader() fmtStackHeader(skip) fmt.Fprintln()".
+func (l *Logger) printLevel(v byte, skip int, a ...interface{}) {
 	log := GetLog()
 	// Level
 	log.line = append(log.line, v)
@@ -236,18 +233,17 @@ func (l *Logger) printLevel(v byte, n int, a ...interface{}) {
 	l.fmtTimeHeader(log)
 	log.line = append(log.line, ' ')
 	// Caller
-	l.fmtStackHeader(log, n)
+	l.fmtStackHeader(log, skip)
 	log.line = append(log.line, ' ')
 	// Log
-	fmt.Fprint(log, a...)
-	// Endline
-	log.line = append(log.line, '\n')
+	fmt.Fprintln(log, a...)
 	// Output
 	l.out.Write(log.line)
 	PutLog(log)
 }
 
-func (l *Logger) printfLevel(v byte, n int, f string, a ...interface{}) {
+// Format is "v fmtTimeHeader() fmtStackHeader(skip) fmt.Fprintf()\n".
+func (l *Logger) printfLevel(v byte, skip int, f string, a ...interface{}) {
 	log := GetLog()
 	// Level
 	log.line = append(log.line, v)
@@ -256,7 +252,7 @@ func (l *Logger) printfLevel(v byte, n int, f string, a ...interface{}) {
 	l.fmtTimeHeader(log)
 	log.line = append(log.line, ' ')
 	// Caller
-	l.fmtStackHeader(log, n)
+	l.fmtStackHeader(log, skip)
 	log.line = append(log.line, ' ')
 	// Log
 	fmt.Fprintf(log, f, a...)

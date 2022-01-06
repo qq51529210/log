@@ -9,7 +9,7 @@ import (
 
 var (
 	stdLogger = log.New(os.Stderr, "", log.LstdFlags|log.Lmicroseconds|log.Llongfile)
-	myLogger  = NewLogger(os.Stderr, 1, new(CallStackFilePathHeader))
+	myLogger  = NewLogger(os.Stderr, 1, new(FilePathStackHeader))
 	logFormat = "text: %s"
 	logText   = "test"
 )
@@ -71,6 +71,14 @@ func test_Error() {
 	LevelDepthError(-1, 1, "LevelDepthError:", logText)
 	LevelDepthErrorf(0, 0, "LevelDepthErrorf: %s", logText)
 	LevelDepthErrorf(-1, 1, "LevelDepthErrorf: %s", logText)
+}
+
+func Test_Recover(t *testing.T) {
+	defer func() {
+		Recover(recover())
+	}()
+
+	panic("test recover")
 }
 
 func Benchmark_My_Logger(b *testing.B) {

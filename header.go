@@ -7,20 +7,25 @@ import (
 )
 
 type Header interface {
+	FormatWith(log *Log, path, line string)
 	Format(log *Log, depth int)
 }
 
-type CallStackNullHeader struct {
+type NullStackHeader struct {
 }
 
-func (hd *CallStackNullHeader) Format(log *Log, depth int) {
+func (hd *NullStackHeader) Format(log *Log, depth int) {
 	FormatTime(log)
 }
 
-type CallStackFileNameHeader struct {
+func (hd *NullStackHeader) FormatWith(log *Log, path, line string) {
+	FormatTime(log)
 }
 
-func (hd *CallStackFileNameHeader) Format(log *Log, depth int) {
+type FileNameStackHeader struct {
+}
+
+func (hd *FileNameStackHeader) Format(log *Log, depth int) {
 	FormatTime(log)
 	log.line = append(log.line, ' ')
 	_, path, line, ok := runtime.Caller(depth)
@@ -40,10 +45,24 @@ func (hd *CallStackFileNameHeader) Format(log *Log, depth int) {
 	log.WriteInt(line)
 }
 
-type CallStackFilePathHeader struct {
+func (hd *FileNameStackHeader) FormatWith(log *Log, path, line string) {
+	FormatTime(log)
+	log.line = append(log.line, ' ')
+	for i := len(path) - 1; i > 0; i-- {
+		if path[i] == filepath.Separator {
+			path = path[i+1:]
+			break
+		}
+	}
+	log.WriteString(path)
+	log.line = append(log.line, ':')
+	log.WriteString(line)
 }
 
-func (hd *CallStackFilePathHeader) Format(log *Log, depth int) {
+type FilePathStackHeader struct {
+}
+
+func (hd *FilePathStackHeader) Format(log *Log, depth int) {
 	FormatTime(log)
 	log.line = append(log.line, ' ')
 	_, path, line, ok := runtime.Caller(depth)
@@ -54,6 +73,14 @@ func (hd *CallStackFilePathHeader) Format(log *Log, depth int) {
 	log.WriteString(path)
 	log.line = append(log.line, ':')
 	log.WriteInt(line)
+}
+
+func (hd *FilePathStackHeader) FormatWith(log *Log, path, line string) {
+	FormatTime(log)
+	log.line = append(log.line, ' ')
+	log.WriteString(path)
+	log.line = append(log.line, ':')
+	log.WriteString(line)
 }
 
 func FormatTime(log *Log) {

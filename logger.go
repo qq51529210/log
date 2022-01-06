@@ -1,9 +1,11 @@
 package log
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"sync/atomic"
 )
 
@@ -21,6 +23,7 @@ const (
 	_Info  byte = 'I'
 	_Warn  byte = 'W'
 	_Error byte = 'E'
+	_Panic byte = 'P'
 )
 
 const (
@@ -73,18 +76,21 @@ type Logger interface {
 	LevelDepthInfof(level, depth int, format string, args ...interface{})
 	LevelDepthWarnf(level, depth int, format string, args ...interface{})
 	LevelDepthErrorf(level, depth int, format string, args ...interface{})
+	//
+	Recover(recover interface{})
 }
 
 var (
 	defaultLogger = &logger{
 		Writer:      os.Stdout,
-		Header:      &CallStackFilePathHeader{},
+		Header:      new(FilePathStackHeader),
 		level:       0,
 		enableDebug: true,
 		enableInfo:  true,
 		enableWarn:  true,
 		enableError: true,
 	}
+	runtimePanic = []byte("runtime/panic.go")
 )
 
 func NewLogger(writer io.Writer, level int, header Header, types ...OutputType) Logger {
@@ -302,6 +308,10 @@ func LevelDepthErrorf(level int, depth int, format string, args ...interface{}) 
 	if defaultLogger.enableError && defaultLogger.level <= int32(level) {
 		defaultLogger.outputf(_DefaultDepth+depth, _Error, format, args...)
 	}
+}
+
+func Recover(recover interface{}) {
+	defaultLogger.Recover(recover)
 }
 
 type logger struct {
@@ -560,5 +570,53 @@ func (lg *logger) LevelDepthError(level, depth int, args ...interface{}) {
 func (lg *logger) LevelDepthErrorf(level, depth int, format string, args ...interface{}) {
 	if lg.enableError && lg.level <= int32(level) {
 		lg.outputf(_LoggerDepth+depth, _Error, format, args...)
+	}
+}
+
+func (lg *logger) Recover(recover interface{}) {
+	b := debug.Stack()
+	found := false
+	n := 0
+	for len(b) > 0 {
+		i := bytes.IndexByte(b, '\n')
+		if i < 0 {
+			return
+		}
+		if !found {
+			found = bytes.Contains(b[:i], runtimePanic)
+		} else {
+			n++
+			// the second line
+			if n == 2 {
+				// skip '\t'
+				b := b[1:i]
+				_log := logPool.Get().(*Log)
+				_log.line = _log.line[:0]
+				_log.line = append(_log.line, _Panic)
+				_log.line = append(_log.line, ' ')
+				// stack
+				i = bytes.LastIndexByte(b, ' ')
+				if i > 0 {
+					b = b[:i]
+					// split path and line
+					i = bytes.LastIndexByte(b, ':')
+					if i > 0 {
+						lg.Header.FormatWith(_log, string(b[:i]), string(b[i+1:]))
+					} else {
+						lg.Header.FormatWith(_log, "?", "-1")
+					}
+				} else {
+					lg.Header.FormatWith(_log, "?", "-1")
+				}
+				//
+				_log.line = append(_log.line, ' ')
+				fmt.Fprint(_log, recover)
+				_log.line = append(_log.line, '\n')
+				lg.Writer.Write(_log.line)
+				logPool.Put(_log)
+				return
+			}
+		}
+		b = b[i+1:]
 	}
 }

@@ -7,26 +7,44 @@ import (
 )
 
 type Header interface {
-	FormatWith(log *Log, path, line string)
-	Format(log *Log, depth int)
+	FormatWith(log *Log, level Level, path, line string)
+	Format(log *Log, level Level, depth int)
 }
 
-type NullStackHeader struct {
+// DefaultHeader format: AppId Level Date Time
+type DefaultHeader struct {
+	id string
 }
 
-func (hd *NullStackHeader) Format(log *Log, depth int) {
+func (h *DefaultHeader) Format(log *Log, level Level, depth int) {
+	// app id
+	log.line = append(log.line, h.id...)
+	log.line = append(log.line, ' ')
+	// level
+	log.line = append(log.line, byte(level))
+	log.line = append(log.line, ' ')
+	// time
 	FormatTime(log)
 }
 
-func (hd *NullStackHeader) FormatWith(log *Log, path, line string) {
+func (h *DefaultHeader) FormatWith(log *Log, level Level, path, line string) {
+	// app id
+	log.line = append(log.line, h.id...)
+	log.line = append(log.line, ' ')
+	// level
+	log.line = append(log.line, byte(level))
+	log.line = append(log.line, ' ')
+	// time
 	FormatTime(log)
 }
 
+// FileNameStackHeader format is "AppId Level Date Time StackFileName:CodeLine"
 type FileNameStackHeader struct {
+	DefaultHeader
 }
 
-func (hd *FileNameStackHeader) Format(log *Log, depth int) {
-	FormatTime(log)
+func (h *FileNameStackHeader) Format(log *Log, level Level, depth int) {
+	h.DefaultHeader.Format(log, level, depth)
 	log.line = append(log.line, ' ')
 	_, path, line, ok := runtime.Caller(depth)
 	if !ok {
@@ -45,8 +63,8 @@ func (hd *FileNameStackHeader) Format(log *Log, depth int) {
 	log.WriteInt(line)
 }
 
-func (hd *FileNameStackHeader) FormatWith(log *Log, path, line string) {
-	FormatTime(log)
+func (h *FileNameStackHeader) FormatWith(log *Log, level Level, path, line string) {
+	h.DefaultHeader.FormatWith(log, level, path, line)
 	log.line = append(log.line, ' ')
 	for i := len(path) - 1; i > 0; i-- {
 		if path[i] == filepath.Separator {
@@ -59,11 +77,13 @@ func (hd *FileNameStackHeader) FormatWith(log *Log, path, line string) {
 	log.WriteString(line)
 }
 
+// FileNameStackHeader format is "AppId Level Date Time StackFilePath:CodeLine"
 type FilePathStackHeader struct {
+	DefaultHeader
 }
 
-func (hd *FilePathStackHeader) Format(log *Log, depth int) {
-	FormatTime(log)
+func (h *FilePathStackHeader) Format(log *Log, level Level, depth int) {
+	h.DefaultHeader.Format(log, level, depth)
 	log.line = append(log.line, ' ')
 	_, path, line, ok := runtime.Caller(depth)
 	if !ok {
@@ -75,14 +95,15 @@ func (hd *FilePathStackHeader) Format(log *Log, depth int) {
 	log.WriteInt(line)
 }
 
-func (hd *FilePathStackHeader) FormatWith(log *Log, path, line string) {
-	FormatTime(log)
+func (h *FilePathStackHeader) FormatWith(log *Log, level Level, path, line string) {
+	h.DefaultHeader.FormatWith(log, level, path, line)
 	log.line = append(log.line, ' ')
 	log.WriteString(path)
 	log.line = append(log.line, ':')
 	log.WriteString(line)
 }
 
+// FormatTime format is "2006-01-02 15:04:05.000000"
 func FormatTime(log *Log) {
 	t := time.Now()
 	year, month, day := t.Date()

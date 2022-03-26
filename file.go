@@ -11,144 +11,176 @@ import (
 )
 
 const (
-	defaultMaxFileSize = 1024 * 1024
+	// 默认的日志文件最大字节
+	defaultMaxFileSize = 1024 * 1024 * 10
+	// 最小保存的天数
+	minKeepDay = 24 * time.Hour
+	// 最小同步间隔
+	minSyncDur = 100 * time.Millisecond
 )
 
 var (
 	errFileClosed = errors.New("file has been closed")
 )
 
-// Create a new File output.
-// rootDir: root directory where log file output.
-// maxFileSize: It will create a new file if current file size is larger than maxFileSize.
-// maxKeepDay: It will remove all files which's date before today-maxKeepDay.
-// checkDur: Check file date and flush log buffer to disk duration, running in a routine.
-func NewFile(rootDir string, maxFileSize, maxKeepDay int, checkDur time.Duration) *File {
-	f := new(File)
-	f.ok = true
-	f.rootDir = rootDir
-	f.maxFileSize = maxFileSize
-	if f.maxFileSize < 1 {
-		f.maxFileSize = defaultMaxFileSize
-	}
-	f.maxKeepDay = time.Duration(maxKeepDay)
-	if f.maxKeepDay < 1 {
-		f.maxKeepDay = 1
-	}
-	f.maxKeepDay *= time.Hour * 24
-	if checkDur <= 0 {
-		checkDur = time.Millisecond * 100
-	}
-	f.timer = time.NewTicker(checkDur)
-	f.exit = make(chan struct{})
-	f.wait.Add(1)
-	go f.loop()
-	return f
+// FileConfig 是 NewFile 的参数。
+type FileConfig struct {
+	// 日志保存的根目录
+	RootDir string
+	// 每一份日志文件的最大字节，使用 1.5/K/M/G/T 这样的字符表示。
+	MaxFileSize string
+	// 保存的最大天数，最小是1天。
+	MaxKeepDay float64
+	// 同步到磁盘的时间间隔，单位，毫秒。最小是10毫秒。
+	// 注意的是，如果文件大小达到 MaxFileSize ，那么立即同步。
+	SyncInterval int
 }
 
-// File implements io.Writer to receive data in memory and outputs it to a file in next output time.
-// Directory structure is: root dir / date dir / time file
+// NewFile 返回一个 File 实例。
+func NewFile(conf *FileConfig) (*File, error) {
+	// 解析文件大小
+	size, err := ParseSize(conf.MaxFileSize)
+	if err != nil {
+		return nil, err
+	}
+	if size < 1 {
+		size = defaultMaxFileSize
+	}
+	// 文件保存的时长
+	keepDuraion := time.Duration(conf.MaxKeepDay * float64(minKeepDay))
+	if keepDuraion < minKeepDay {
+		keepDuraion = minKeepDay
+	}
+	// 同步时长
+	syncDur := time.Duration(conf.SyncInterval) * time.Millisecond
+	if syncDur < minSyncDur {
+		syncDur = minSyncDur
+	}
+	// 实例
+	f := new(File)
+	f.rootDir = conf.RootDir
+	f.maxFileSize = int(size)
+	f.exit = make(chan struct{})
+	f.maxKeepDuraion = keepDuraion
+	// 先打开文件准备
+	f.open()
+	// 启动同步协程
+	f.wait.Add(1)
+	go f.syncLoop(syncDur)
+	return f, nil
+}
+
+// File 实现了 io.Writer 接口，可以作为 Logger 的输出。
+// File 首先会将 log 保存在内存中，后台启动一个同步协程，每隔一段时间将数据同步到磁盘。
+// 如果内存的数据到了最大，会立即同步。
+// 在同步的同时，File 还会自动删除磁盘上时间超过指定天数的文件。
+// 目录结构是，root/date/time.ms
 type File struct {
 	lock sync.Mutex
-	// Wait for FlushLoop routine exit.
 	wait sync.WaitGroup
-	// Timer for flush loop.
-	timer *time.Ticker
-	// Close signal.
+	// 退出协程通知
 	exit chan struct{}
-	// If closed.
-	ok bool
-	// Root directory.
+	// 是否已关闭标志
+	closed bool
+	// 日志文件的根目录
 	rootDir string
-	// Max size of a log file.
-	maxFileSize int
-	// Max days to keep file.
-	maxKeepDay time.Duration
-	// Log data, waitting for flush.
+	// 内存数据
 	data []byte
-	// The file is opened to write.
+	// 当前打开的文件
 	file *os.File
+	// 最大的保存天数
+	maxKeepDuraion time.Duration
+	// 当前磁盘文件的字节
+	curFileSize int
+	// 磁盘文件的最大字节
+	maxFileSize int
 }
 
-// Check and flush routine
-func (f *File) loop() {
-	defer f.wait.Done()
-	// Open file.
-	f.lock.Lock()
-	f.openFile()
-	f.lock.Unlock()
-	// Check expire file.
-	checkTime := time.Now()
-	f.checkExpiredFile(checkTime)
-	for f.ok {
-		select {
-		case now := <-f.timer.C:
-			// Time to flush data.
-			f.lock.Lock()
-			f.flushData()
-			f.lock.Unlock()
-			// Another day.
-			if now.Day() != checkTime.Day() {
-				f.checkExpiredFile(now)
-				checkTime = now
-			}
-		case <-f.exit:
-			// Close() called.
-		}
-	}
-}
-
-// Append data b to memory.
+// Write 是 io.Writer 接口。
 func (f *File) Write(b []byte) (int, error) {
 	f.lock.Lock()
-	if f.ok {
-		if len(b)+len(f.data) >= f.maxFileSize {
-			// Memory data is greater than maxFileSize
-			f.flushData()
-			f.closeFile()
-			f.openFile()
-		}
-		f.data = append(f.data, b...)
+	// 关闭了
+	if f.closed {
 		f.lock.Unlock()
-		return len(b), nil
+		return 0, errFileClosed
+	}
+	// 添加到内存
+	f.data = append(f.data, b...)
+	f.curFileSize += len(f.data)
+	// 如果内存数据达到最大了，换新文件输出
+	if f.curFileSize >= f.maxFileSize {
+		f.curFileSize = 0
+		f.flush()
+		f.close()
+		f.open()
 	}
 	f.lock.Unlock()
-	return 0, errFileClosed
+	return len(b), nil
 }
 
-// Change File state and wait for FlushLoop exit.
+// syncLoop 运行在一个协程中。
+func (f *File) syncLoop(syncDur time.Duration) {
+	syncTimer := time.NewTicker(syncDur)
+	syncTicker := time.NewTicker(f.maxKeepDuraion)
+	defer func() {
+		syncTicker.Stop()
+		syncTimer.Stop()
+		f.wait.Done()
+	}()
+	// 先检查一次
+	f.check(time.Now())
+	for f.closed {
+		select {
+		case now := <-syncTicker.C:
+			// 检查过期文件
+			f.check(now)
+		case <-syncTimer.C:
+			// 同步时间
+			f.lock.Lock()
+			f.flush()
+			f.lock.Unlock()
+		case <-f.exit:
+			// 退出信号
+			return
+		}
+	}
+}
+
+// Close 实现 io.Closer 接口，同步内存到磁盘，等待协程退出。
 func (f *File) Close() error {
 	f.lock.Lock()
-	if !f.ok {
+	if f.closed {
 		f.lock.Unlock()
 		return errFileClosed
 	}
-	f.ok = false
+	f.closed = true
 	f.lock.Unlock()
+	// 结束协程通知。
 	close(f.exit)
-	// Waitting for FlushLoop exit.
+	// 等待退出。
 	f.wait.Wait()
-	// Stop timer.
-	f.timer.Stop()
-	// Flush rest of data.
-	f.flushData()
-	// Close file.
-	f.closeFile()
+	// 同步数据，并关闭文件。
+	f.flush()
+	f.close()
+	// 返回
 	return nil
 }
 
-// Check and remove expired logs.
-func (f *File) checkExpiredFile(now time.Time) {
-	files, err := ioutil.ReadDir(f.rootDir)
+// check 检查过期文件。
+func (f *File) check(now time.Time) {
+	// 读取根目录下的所有文件
+	infos, err := ioutil.ReadDir(f.rootDir)
 	if nil != err {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	delTime := now.Add(-f.maxKeepDay)
-	for i := 0; i < len(files); i++ {
-		// Remove all file which modify time is before delTime.
-		if files[i].ModTime().Sub(delTime) < 0 {
-			err = os.RemoveAll(filepath.Join(f.rootDir, files[i].Name()))
+	// 应该删除的时间
+	delTime := now.Add(-f.maxKeepDuraion)
+	// 循环检查
+	for i := 0; i < len(infos); i++ {
+		// 文件时间小于删除时间
+		if infos[i].ModTime().Sub(delTime) < 0 {
+			err = os.RemoveAll(filepath.Join(f.rootDir, infos[i].Name()))
 			if nil != err {
 				fmt.Fprintln(os.Stderr, err)
 			}
@@ -156,17 +188,26 @@ func (f *File) checkExpiredFile(now time.Time) {
 	}
 }
 
-// Open a new file.
-func (f *File) openFile() {
+// flush 将内存的数据保存到硬盘，如果写入失败，数据会丢弃。
+func (f *File) flush() {
+	_, err := f.file.Write(f.data)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	f.data = f.data[:0]
+}
+
+// open 打开一个新的文件
+func (f *File) open() {
 	now := time.Now()
-	// Create "date" directory first.
+	// 创建目录，root/date
 	dateDir := filepath.Join(f.rootDir, now.Format("20060102"))
 	err := os.MkdirAll(dateDir, os.ModePerm)
 	if nil != err {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	// Create "time" log file
+	// 创建日志文件，root/date/time.ms
 	timeFile := filepath.Join(dateDir, now.Format("20060102150405.000000"))
 	f.file, err = os.OpenFile(timeFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
 	if nil != err {
@@ -174,19 +215,10 @@ func (f *File) openFile() {
 	}
 }
 
-// Close file if is opened.
-func (f *File) closeFile() {
+// close 关闭当前文件
+func (f *File) close() {
 	if nil != f.file {
 		f.file.Close()
 		f.file = nil
 	}
-}
-
-// Flush data to file.
-func (f *File) flushData() {
-	_, err := f.file.Write(f.data)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-	}
-	f.data = f.data[:0]
 }

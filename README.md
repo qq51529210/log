@@ -1,73 +1,30 @@
-# log
+# 日志轮子
+模仿标准库的 log 造了一个轮子，增加了 Level 和 TrackID 。
+# 日志头
+提供自定义日志头接口，默认有三种日志头格式可以使用。  
+appId 和 trackId 如果为空串不输出，也可以实现 HeaderFormater 自定义日志头格式。
+- defalut 输出格式：level appId trackId log
+- FileNameStackHeaderFormater 输出格式：level appId trackId fileName:fileLine log
+- FilePathStackHeaderFormater 输出格式：level appId trackId filepath:fileLine log
 
-Standard library log format header is fixed(2006/01/02 15:04:05.123456),I don't like it,so I wrote this package.
+# 输出
+默认 Logger 是输出到 os.Stdout ，可以自己指定 io.Writer 。[file.go](./file.go) 实现了输出到文件。
 
-You can output your own header.
+# usage
+看 [logger_test.go](./logger_test.go) 文件。
 
-## Usage
-
-```go
-Debug("Debug:", logText)
-Debugf("Debugf: %s", logText)
-DepthDebug(1, "DepthDebug:", logText)
-DepthDebugf(1, "DepthDebugf: %s", logText)
-LevelDepthDebug(0, 0, "LevelDepthDebug:", logText)
-LevelDepthDebug(-1, 1, "LevelDepthDebug:", logText)
-LevelDepthDebugf(0, 0, "LevelDepthDebugf: %s", logText)
-LevelDepthDebugf(-1, 1, "LevelDepthDebugf: %s", logText)
-// 
-myLogger := NewLogger(os.Stderr, 1, new(CallStackFilePathHeader))
-myLogger.SetWriter(myStrogeWriter)
-myLogger.SetLevel(myLevel)
-myLogger.SetType(OutputTypeDebug, OutputTypeInfo, OutputTypeWarn, OutputTypeError)
-myLogger.Debug("Debug:", logText)
-myLogger.Debugf("Debugf: %s", logText)
-myLogger.DepthDebug(1, "DepthDebug:", logText)
-myLogger.DepthDebugf(1, "DepthDebugf: %s", logText)
-myLogger.myLogger.LevelDepthDebug(0, 0, "LevelDepthDebug:", logText)
-myLogger.LevelDepthDebug(-1, 1, "LevelDepthDebug:", logText)
-myLogger.LevelDepthDebugf(0, 0, "LevelDepthDebugf: %s", logText)
-myLogger.LevelDepthDebugf(-1, 1, "LevelDepthDebugf: %s", logText)
-// 
-writer := NewFile(logDir, 1024*1024, 7, time.Second)
-SetWriter(writer)
-SetLevel(1))
-// will not output
-LevelDebug(0, "LevelDebug")
-// output LevelDebug
-LevelDebug(1, "LevelDebug")
-// output LevelDebug
-LevelDebug(2, "LevelDebug")
-SetType(OutputTypeInfo, OutputTypeError)
-// will not output
-Debug("Debug")
-// output Info
-Info("Info")
-// will not output
-Warn("Warn")
-// output Error
-Error("Error")
-```
-
-## Writer
-
-- [File](./file.go)
-
-  Save log on local disk.
-
-## Benchmark  
-
-Comparison with standard library.
+# benchmark
 
 ```go
 goos: darwin
 goarch: amd64
 pkg: github.com/qq51529210/log
-Benchmark_My_Logger-4             763563              1375 ns/op             248 B/op          4 allocs/op
-Benchmark_Std_Logger-4            991500              1212 ns/op             240 B/op          4 allocs/op
-Benchmark_My_Logger_f-4           860084              1399 ns/op             248 B/op          4 allocs/op
-Benchmark_Std_Logger_f-4          955314              1262 ns/op             248 B/op          4 allocs/op
+cpu: Intel(R) Core(TM) i5-7360U CPU @ 2.30GHz
+Benchmark_My_Logger-4            1039316              1083 ns/op             216 B/op          2 allocs/op
+Benchmark_Std_Logger-4           1100016              1086 ns/op             240 B/op          4 allocs/op
+Benchmark_My_Logger_f-4          1065927              1158 ns/op             216 B/op          2 allocs/op
+Benchmark_Std_Logger_f-4          878757              1160 ns/op             248 B/op          4 allocs/op
 PASS
-ok      github.com/qq51529210/log       8.100s
+ok      github.com/qq51529210/log       7.449s
 ```
 

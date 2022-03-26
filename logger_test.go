@@ -84,6 +84,7 @@ func Benchmark_Std_Logger(b *testing.B) {
 }
 
 func Benchmark_My_Logger_f(b *testing.B) {
+	myLogger.Info("benchmark my logger")
 	b.ReportAllocs()
 	b.ResetTimer()
 	var output bytes.Buffer
@@ -95,6 +96,7 @@ func Benchmark_My_Logger_f(b *testing.B) {
 }
 
 func Benchmark_Std_Logger_f(b *testing.B) {
+	stdLogger.Println("benchmark std logger")
 	b.ReportAllocs()
 	b.ResetTimer()
 	var output bytes.Buffer

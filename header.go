@@ -9,6 +9,7 @@ import (
 type HeaderFormaterType string
 
 const (
+	DefaultHeaderFormater       HeaderFormaterType = "default"
 	FileNameStackHeaderFormater HeaderFormaterType = "fileNameStack"
 	FilePathStackHeaderFormater HeaderFormaterType = "filePathStack"
 )

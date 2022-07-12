@@ -6,11 +6,15 @@ import (
 	"time"
 )
 
+// HeaderFormaterType 表示格式化日志头的类型
 type HeaderFormaterType string
 
 const (
-	DefaultHeaderFormater       HeaderFormaterType = "default"
+	// DefaultHeaderFormater 表示默认的格式化头
+	DefaultHeaderFormater HeaderFormaterType = "default"
+	// FileNameStackHeaderFormater 表示打印堆栈信息只打印文件名
 	FileNameStackHeaderFormater HeaderFormaterType = "fileNameStack"
+	// FilePathStackHeaderFormater 表示打印堆栈信息只打印文件完整路径
 	FilePathStackHeaderFormater HeaderFormaterType = "filePathStack"
 )
 
@@ -18,74 +22,74 @@ const (
 type HeaderFormater interface {
 	// FormatWith 使用 level ，path ，line 来格式化 log 。
 	// path 和 line 是调用堆栈的文件路径和行数。
-	FormatWith(log *Log, trackId string, level Level, path, line string)
+	FormatWith(log *Log, traceID string, level Level, path, line string)
 	// Format 使用 level ，depth 来格式化 log 。
 	// depth 是 runtime.Caller() 的参数。
-	Format(log *Log, trackId string, level Level, depth int)
+	Format(log *Log, traceID string, level Level, depth int)
 }
 
 // NewHeaderFormater 返回不同的 HeaderFormater 。
-// fileNameStack 返回的是 addId level datetime fileName:line log 的格式，
-// filePathStack 返回的是 addId level datetime filePath:line log 的格式。
-func NewHeaderFormater(headerFormaterType HeaderFormaterType, appId string) HeaderFormater {
+// fileNameStack 返回的是 appID level datetime fileName:line log 的格式，
+// filePathStack 返回的是 appID level datetime filePath:line log 的格式。
+func NewHeaderFormater(headerFormaterType HeaderFormaterType, appID string) HeaderFormater {
 	switch headerFormaterType {
 	case FileNameStackHeaderFormater:
-		return &fileNameStackHeader{defaultHeader: defaultHeader{appId: appId}}
+		return &fileNameStackHeader{defaultHeader: defaultHeader{appID: appID}}
 	case FilePathStackHeaderFormater:
-		return &filePathStackHeader{defaultHeader: defaultHeader{appId: appId}}
+		return &filePathStackHeader{defaultHeader: defaultHeader{appID: appID}}
 	default:
-		return &defaultHeader{appId: appId}
+		return &defaultHeader{appID: appID}
 	}
 }
 
-// defaultHeader format: AppId Level Date Time
+// defaultHeader format: AppID Level Date Time
 type defaultHeader struct {
-	appId string
+	appID string
 }
 
-func (h *defaultHeader) Format(log *Log, trackId string, level Level, depth int) {
+func (h *defaultHeader) Format(log *Log, traceID string, level Level, depth int) {
 	// level
 	log.line = append(log.line, byte(level))
 	log.line = append(log.line, ' ')
 	// app id
-	if h.appId != "" {
-		log.line = append(log.line, h.appId...)
+	if h.appID != "" {
+		log.line = append(log.line, h.appID...)
 		log.line = append(log.line, ' ')
 	}
-	// track id
-	if trackId != "" {
-		log.line = append(log.line, trackId...)
+	// trace id
+	if traceID != "" {
+		log.line = append(log.line, traceID...)
 		log.line = append(log.line, ' ')
 	}
 	// time
 	FormatTime(log)
 }
 
-func (h *defaultHeader) FormatWith(log *Log, trackId string, level Level, path, line string) {
+func (h *defaultHeader) FormatWith(log *Log, traceID string, level Level, path, line string) {
 	// level
 	log.line = append(log.line, byte(level))
 	log.line = append(log.line, ' ')
 	// app id
-	if h.appId != "" {
-		log.line = append(log.line, h.appId...)
+	if h.appID != "" {
+		log.line = append(log.line, h.appID...)
 		log.line = append(log.line, ' ')
 	}
-	// track id
-	if trackId != "" {
-		log.line = append(log.line, trackId...)
+	// trace id
+	if traceID != "" {
+		log.line = append(log.line, traceID...)
 		log.line = append(log.line, ' ')
 	}
 	// time
 	FormatTime(log)
 }
 
-// fileNameStackHeader format is "AppId Level Date Time StackFileName:CodeLine"
+// fileNameStackHeader format is "AppID Level Date Time StackFileName:CodeLine"
 type fileNameStackHeader struct {
 	defaultHeader
 }
 
-func (h *fileNameStackHeader) Format(log *Log, trackId string, level Level, depth int) {
-	h.defaultHeader.Format(log, trackId, level, depth)
+func (h *fileNameStackHeader) Format(log *Log, traceID string, level Level, depth int) {
+	h.defaultHeader.Format(log, traceID, level, depth)
 	log.line = append(log.line, ' ')
 	_, path, line, ok := runtime.Caller(depth)
 	if !ok {
@@ -104,8 +108,8 @@ func (h *fileNameStackHeader) Format(log *Log, trackId string, level Level, dept
 	log.WriteInt(line)
 }
 
-func (h *fileNameStackHeader) FormatWith(log *Log, trackId string, level Level, path, line string) {
-	h.defaultHeader.FormatWith(log, trackId, level, path, line)
+func (h *fileNameStackHeader) FormatWith(log *Log, traceID string, level Level, path, line string) {
+	h.defaultHeader.FormatWith(log, traceID, level, path, line)
 	log.line = append(log.line, ' ')
 	for i := len(path) - 1; i > 0; i-- {
 		if path[i] == filepath.Separator {
@@ -118,13 +122,13 @@ func (h *fileNameStackHeader) FormatWith(log *Log, trackId string, level Level, 
 	log.WriteString(line)
 }
 
-// fileNameStackHeader format is "AppId Level Date Time StackFilePath:CodeLine"
+// fileNameStackHeader format is "AppID Level Date Time StackFilePath:CodeLine"
 type filePathStackHeader struct {
 	defaultHeader
 }
 
-func (h *filePathStackHeader) Format(log *Log, trackId string, level Level, depth int) {
-	h.defaultHeader.Format(log, trackId, level, depth)
+func (h *filePathStackHeader) Format(log *Log, traceID string, level Level, depth int) {
+	h.defaultHeader.Format(log, traceID, level, depth)
 	log.line = append(log.line, ' ')
 	_, path, line, ok := runtime.Caller(depth)
 	if !ok {
@@ -136,8 +140,8 @@ func (h *filePathStackHeader) Format(log *Log, trackId string, level Level, dept
 	log.WriteInt(line)
 }
 
-func (h *filePathStackHeader) FormatWith(log *Log, trackId string, level Level, path, line string) {
-	h.defaultHeader.FormatWith(log, trackId, level, path, line)
+func (h *filePathStackHeader) FormatWith(log *Log, traceID string, level Level, path, line string) {
+	h.defaultHeader.FormatWith(log, traceID, level, path, line)
 	log.line = append(log.line, ' ')
 	log.WriteString(path)
 	log.line = append(log.line, ':')

@@ -9,7 +9,7 @@ import (
 
 var (
 	stdLogger = log.New(os.Stderr, "", log.LstdFlags|log.Lmicroseconds|log.Llongfile)
-	myLogger  = NewLogger(os.Stderr, NewHeaderFormater(FilePathStackHeaderFormater, "appId"))
+	myLogger  = NewLogger(os.Stderr, NewHeaderFormater(FilePathStackHeaderFormater, "appID"))
 	logFormat = "text: %s"
 	logText   = "test"
 )
@@ -30,10 +30,10 @@ func test_Debug() {
 	Debugf("Debugf: %s", logText)
 	DebugDepth(0, "DebugDepth:", logText)
 	DebugfDepth(1, "DebugDepthf: %s", logText)
-	DebugTrack("track-id-1", "Debug:", logText)
-	DebugfTrack("track-id-2", "Debugf: %s", logText)
-	DebugDepthTrack("track-id-3", 0, "DebugDepth:", logText)
-	DebugfDepthTrack("track-id-4", 1, "DebugDepthf: %s", logText)
+	DebugTrace("trace-id-1", "Debug:", logText)
+	DebugfTrace("trace-id-2", "Debugf: %s", logText)
+	DebugDepthTrace("trace-id-3", 0, "DebugDepth:", logText)
+	DebugfDepthTrace("trace-id-4", 1, "DebugDepthf: %s", logText)
 }
 
 func test_Info() {
@@ -41,10 +41,10 @@ func test_Info() {
 	Infof("Infof: %s", logText)
 	InfoDepth(0, "InfoDepth:", logText)
 	InfofDepth(1, "InfoDepthf: %s", logText)
-	InfoTrack("track-id-1", "Info:", logText)
-	InfofTrack("track-id-2", "Infof: %s", logText)
-	InfoDepthTrack("track-id-3", 0, "InfoDepth:", logText)
-	InfofDepthTrack("track-id-4", 1, "InfoDepthf: %s", logText)
+	InfoTrace("trace-id-1", "Info:", logText)
+	InfofTrace("trace-id-2", "Infof: %s", logText)
+	InfoDepthTrace("trace-id-3", 0, "InfoDepth:", logText)
+	InfofDepthTrace("trace-id-4", 1, "InfoDepthf: %s", logText)
 }
 
 func test_Warn() {
@@ -52,10 +52,10 @@ func test_Warn() {
 	Warnf("Warnf: %s", logText)
 	WarnDepth(0, "WarnDepth:", logText)
 	WarnfDepth(1, "WarnDepthf: %s", logText)
-	WarnTrack("track-id-1", "Warn:", logText)
-	WarnfTrack("track-id-2", "Warnf: %s", logText)
-	WarnDepthTrack("track-id-3", 0, "WarnDepth:", logText)
-	WarnfDepthTrack("track-id-4", 1, "WarnDepthf: %s", logText)
+	WarnTrace("trace-id-1", "Warn:", logText)
+	WarnfTrace("trace-id-2", "Warnf: %s", logText)
+	WarnDepthTrace("trace-id-3", 0, "WarnDepth:", logText)
+	WarnfDepthTrace("trace-id-4", 1, "WarnDepthf: %s", logText)
 }
 
 func test_Error() {
@@ -63,10 +63,10 @@ func test_Error() {
 	Errorf("Errorf: %s", logText)
 	ErrorDepth(0, "ErrorDepth:", logText)
 	ErrorfDepth(1, "ErrorDepthf: %s", logText)
-	ErrorTrack("track-id-1", "Error:", logText)
-	ErrorfTrack("track-id-2", "Errorf: %s", logText)
-	ErrorDepthTrack("track-id-3", 0, "ErrorDepth:", logText)
-	ErrorfDepthTrack("track-id-4", 1, "ErrorDepthf: %s", logText)
+	ErrorTrace("trace-id-1", "Error:", logText)
+	ErrorfTrace("trace-id-2", "Errorf: %s", logText)
+	ErrorDepthTrace("trace-id-3", 0, "ErrorDepth:", logText)
+	ErrorfDepthTrace("trace-id-4", 1, "ErrorDepthf: %s", logText)
 }
 
 func Test_Recover(t *testing.T) {

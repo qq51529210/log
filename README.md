@@ -1,11 +1,11 @@
 # 日志轮子
-模仿标准库的 log 造了一个轮子，增加了 Level 和 TrackID 。
+模仿标准库的 log 造了一个轮子，增加了 Level 和 TraceID 。
 # 日志头
 提供自定义日志头接口，默认有三种日志头格式可以使用。  
-appId 和 trackId 如果为空串不输出，也可以实现 HeaderFormater 自定义日志头格式。
-- defalut 输出格式：level appId trackId log
-- FileNameStackHeaderFormater 输出格式：level appId trackId fileName:fileLine log
-- FilePathStackHeaderFormater 输出格式：level appId trackId filepath:fileLine log
+appID 和 traceID 如果为空串不输出，也可以实现 HeaderFormater 自定义日志头格式。
+- defalut 输出格式：level appID traceID log
+- FileNameStackHeaderFormater 输出格式：level appID traceID fileName:fileLine log
+- FilePathStackHeaderFormater 输出格式：level appID traceID filepath:fileLine log
 
 # 输出
 默认 Logger 是输出到 os.Stdout ，可以自己指定 io.Writer 。[file.go](./file.go) 实现了输出到文件。

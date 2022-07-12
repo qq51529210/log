@@ -40,37 +40,37 @@ type Logger interface {
 	Debugf(format string, args ...interface{})
 	DebugDepth(depth int, args ...interface{})
 	DebugfDepth(depth int, format string, args ...interface{})
-	DebugTrack(trackId string, args ...interface{})
-	DebugfTrack(trackId string, format string, args ...interface{})
-	DebugDepthTrack(trackId string, depth int, args ...interface{})
-	DebugfDepthTrack(trackId string, depth int, format string, args ...interface{})
+	DebugTrace(traceID string, args ...interface{})
+	DebugfTrace(traceID string, format string, args ...interface{})
+	DebugDepthTrace(traceID string, depth int, args ...interface{})
+	DebugfDepthTrace(traceID string, depth int, format string, args ...interface{})
 	// Info 级别的方法。
 	Info(args ...interface{})
 	Infof(format string, args ...interface{})
 	InfoDepth(depth int, args ...interface{})
 	InfofDepth(depth int, format string, args ...interface{})
-	InfoTrack(trackId string, args ...interface{})
-	InfofTrack(trackId string, format string, args ...interface{})
-	InfoDepthTrack(trackId string, depth int, args ...interface{})
-	InfofDepthTrack(trackId string, depth int, format string, args ...interface{})
+	InfoTrace(traceID string, args ...interface{})
+	InfofTrace(traceID string, format string, args ...interface{})
+	InfoDepthTrace(traceID string, depth int, args ...interface{})
+	InfofDepthTrace(traceID string, depth int, format string, args ...interface{})
 	// Warn 级别的方法。
 	Warn(args ...interface{})
 	Warnf(format string, args ...interface{})
 	WarnDepth(depth int, args ...interface{})
 	WarnfDepth(depth int, format string, args ...interface{})
-	WarnTrack(trackId string, args ...interface{})
-	WarnfTrack(trackId string, format string, args ...interface{})
-	WarnDepthTrack(trackId string, depth int, args ...interface{})
-	WarnfDepthTrack(trackId string, depth int, format string, args ...interface{})
+	WarnTrace(traceID string, args ...interface{})
+	WarnfTrace(traceID string, format string, args ...interface{})
+	WarnDepthTrace(traceID string, depth int, args ...interface{})
+	WarnfDepthTrace(traceID string, depth int, format string, args ...interface{})
 	// Error 级别的方法。
 	Error(args ...interface{})
 	Errorf(format string, args ...interface{})
 	ErrorDepth(depth int, args ...interface{})
 	ErrorfDepth(depth int, format string, args ...interface{})
-	ErrorTrack(trackId string, args ...interface{})
-	ErrorfTrack(trackId string, format string, args ...interface{})
-	ErrorDepthTrack(trackId string, depth int, args ...interface{})
-	ErrorfDepthTrack(trackId string, depth int, format string, args ...interface{})
+	ErrorTrace(traceID string, args ...interface{})
+	ErrorfTrace(traceID string, format string, args ...interface{})
+	ErrorDepthTrace(traceID string, depth int, args ...interface{})
+	ErrorfDepthTrace(traceID string, depth int, format string, args ...interface{})
 	// Recover 检索出 panic 的文件和行数，如果 recover 不为 nil 。
 	Recover(recover interface{})
 }
@@ -83,23 +83,23 @@ var (
 )
 
 func init() {
-	// 使用网卡来初始化默认 logger 的 appId 。
+	// 使用网卡来初始化默认 logger 的 appID 。
 	addr, err := net.Interfaces()
 	if nil != err {
 		panic(err)
 	}
 	// 第一个网卡的 MAC 地址
-	appId := ""
+	appID := ""
 	for i := 0; i < len(addr); i++ {
 		if addr[i].Flags|net.FlagUp != 0 && len(addr[i].HardwareAddr) != 0 {
-			appId = addr[i].HardwareAddr.String()
+			appID = addr[i].HardwareAddr.String()
 			break
 		}
 	}
 	// 默认 logger
 	defaultLogger = &logger{
 		Writer:      os.Stdout,
-		Header:      NewHeaderFormater("filePathStack", appId),
+		Header:      NewHeaderFormater("filePathStack", appID),
 		enableDebug: true,
 		enableInfo:  true,
 		enableWarn:  true,
@@ -162,31 +162,31 @@ func DebugfDepth(depth int, format string, args ...interface{}) {
 	}
 }
 
-// DebugTrack 使用默认 Logger 输出日志。
-func DebugTrack(trackId string, args ...interface{}) {
+// DebugTrace 使用默认 Logger 输出日志。
+func DebugTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.output(trackId, _DEFAULT_DEPTH, DebugLevel, args...)
+		defaultLogger.output(traceID, _DEFAULT_DEPTH, DebugLevel, args...)
 	}
 }
 
-// DebugfTrack 使用默认 Logger 输出日志。
-func DebugfTrack(trackId string, format string, args ...interface{}) {
+// DebugfTrace 使用默认 Logger 输出日志。
+func DebugfTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.outputf(trackId, _DEFAULT_DEPTH, DebugLevel, format, args...)
+		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, DebugLevel, format, args...)
 	}
 }
 
-// DebugDepthTrack 使用默认 Logger 输出日志。
-func DebugDepthTrack(trackId string, depth int, args ...interface{}) {
+// DebugDepthTrace 使用默认 Logger 输出日志。
+func DebugDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.output(trackId, _DEFAULT_DEPTH, DebugLevel, args...)
+		defaultLogger.output(traceID, _DEFAULT_DEPTH, DebugLevel, args...)
 	}
 }
 
-// DebugfDepthTrack 使用默认 Logger 输出日志。
-func DebugfDepthTrack(trackId string, depth int, format string, args ...interface{}) {
+// DebugfDepthTrace 使用默认 Logger 输出日志。
+func DebugfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.outputf(trackId, _DEFAULT_DEPTH, DebugLevel, format, args...)
+		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, DebugLevel, format, args...)
 	}
 }
 
@@ -218,31 +218,31 @@ func InfofDepth(depth int, format string, args ...interface{}) {
 	}
 }
 
-// InfoTrack 使用默认 Logger 输出日志。
-func InfoTrack(trackId string, args ...interface{}) {
+// InfoTrace 使用默认 Logger 输出日志。
+func InfoTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.output(trackId, _DEFAULT_DEPTH, InfoLevel, args...)
+		defaultLogger.output(traceID, _DEFAULT_DEPTH, InfoLevel, args...)
 	}
 }
 
-// InfofTrack 使用默认 Logger 输出日志。
-func InfofTrack(trackId string, format string, args ...interface{}) {
+// InfofTrace 使用默认 Logger 输出日志。
+func InfofTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.outputf(trackId, _DEFAULT_DEPTH, InfoLevel, format, args...)
+		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, InfoLevel, format, args...)
 	}
 }
 
-// InfoDepthTrack 使用默认 Logger 输出日志。
-func InfoDepthTrack(trackId string, depth int, args ...interface{}) {
+// InfoDepthTrace 使用默认 Logger 输出日志。
+func InfoDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.output(trackId, _DEFAULT_DEPTH, InfoLevel, args...)
+		defaultLogger.output(traceID, _DEFAULT_DEPTH, InfoLevel, args...)
 	}
 }
 
-// InfofDepthTrack 使用默认 Logger 输出日志。
-func InfofDepthTrack(trackId string, depth int, format string, args ...interface{}) {
+// InfofDepthTrace 使用默认 Logger 输出日志。
+func InfofDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.outputf(trackId, _DEFAULT_DEPTH, InfoLevel, format, args...)
+		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, InfoLevel, format, args...)
 	}
 }
 
@@ -274,31 +274,31 @@ func WarnfDepth(depth int, format string, args ...interface{}) {
 	}
 }
 
-// WarnTrack 使用默认 Logger 输出日志。
-func WarnTrack(trackId string, args ...interface{}) {
+// WarnTrace 使用默认 Logger 输出日志。
+func WarnTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.output(trackId, _DEFAULT_DEPTH, WarnLevel, args...)
+		defaultLogger.output(traceID, _DEFAULT_DEPTH, WarnLevel, args...)
 	}
 }
 
-// WarnfTrack 使用默认 Logger 输出日志。
-func WarnfTrack(trackId string, format string, args ...interface{}) {
+// WarnfTrace 使用默认 Logger 输出日志。
+func WarnfTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.outputf(trackId, _DEFAULT_DEPTH, WarnLevel, format, args...)
+		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, WarnLevel, format, args...)
 	}
 }
 
-// WarnDepthTrack 使用默认 Logger 输出日志。
-func WarnDepthTrack(trackId string, depth int, args ...interface{}) {
+// WarnDepthTrace 使用默认 Logger 输出日志。
+func WarnDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.output(trackId, _DEFAULT_DEPTH, WarnLevel, args...)
+		defaultLogger.output(traceID, _DEFAULT_DEPTH, WarnLevel, args...)
 	}
 }
 
-// WarnfDepthTrack 使用默认 Logger 输出日志。
-func WarnfDepthTrack(trackId string, depth int, format string, args ...interface{}) {
+// WarnfDepthTrace 使用默认 Logger 输出日志。
+func WarnfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.outputf(trackId, _DEFAULT_DEPTH, WarnLevel, format, args...)
+		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, WarnLevel, format, args...)
 	}
 }
 
@@ -331,30 +331,30 @@ func ErrorfDepth(depth int, format string, args ...interface{}) {
 }
 
 // Error 使用默认 Logger 输出日志。
-func ErrorTrack(trackId string, args ...interface{}) {
+func ErrorTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.output(trackId, _DEFAULT_DEPTH, ErrorLevel, args...)
+		defaultLogger.output(traceID, _DEFAULT_DEPTH, ErrorLevel, args...)
 	}
 }
 
 // Errorf 使用默认 Logger 输出日志。
-func ErrorfTrack(trackId string, format string, args ...interface{}) {
+func ErrorfTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.outputf(trackId, _DEFAULT_DEPTH, ErrorLevel, format, args...)
+		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, ErrorLevel, format, args...)
 	}
 }
 
-// ErrorDepthTrack 使用默认 Logger 输出日志。
-func ErrorDepthTrack(trackId string, depth int, args ...interface{}) {
+// ErrorDepthTrace 使用默认 Logger 输出日志。
+func ErrorDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.output(trackId, _DEFAULT_DEPTH, ErrorLevel, args...)
+		defaultLogger.output(traceID, _DEFAULT_DEPTH, ErrorLevel, args...)
 	}
 }
 
-// ErrorfDepthTrack 使用默认 Logger 输出日志。
-func ErrorfDepthTrack(trackId string, depth int, format string, args ...interface{}) {
+// ErrorfDepthTrace 使用默认 Logger 输出日志。
+func ErrorfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.outputf(trackId, _DEFAULT_DEPTH, ErrorLevel, format, args...)
+		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, ErrorLevel, format, args...)
 	}
 }
 
@@ -372,11 +372,11 @@ type logger struct {
 	enableError bool
 }
 
-func (lg *logger) output(trackId string, depth int, level Level, args ...interface{}) {
+func (lg *logger) output(traceID string, depth int, level Level, args ...interface{}) {
 	_log := logPool.Get().(*Log)
 	_log.line = _log.line[:0]
 	// header
-	lg.Header.Format(_log, trackId, level, depth)
+	lg.Header.Format(_log, traceID, level, depth)
 	_log.line = append(_log.line, ' ')
 	// log
 	fmt.Fprint(_log, args...)
@@ -388,11 +388,11 @@ func (lg *logger) output(trackId string, depth int, level Level, args ...interfa
 	logPool.Put(_log)
 }
 
-func (lg *logger) outputf(trackId string, depth int, level Level, format string, args ...interface{}) {
+func (lg *logger) outputf(traceID string, depth int, level Level, format string, args ...interface{}) {
 	_log := logPool.Get().(*Log)
 	_log.line = _log.line[:0]
 	// header
-	lg.Header.Format(_log, trackId, level, depth)
+	lg.Header.Format(_log, traceID, level, depth)
 	_log.line = append(_log.line, ' ')
 	// log
 	fmt.Fprintf(_log, format, args...)
@@ -455,27 +455,27 @@ func (lg *logger) DebugfDepth(depth int, format string, args ...interface{}) {
 	}
 }
 
-func (lg *logger) DebugTrack(trackId string, args ...interface{}) {
+func (lg *logger) DebugTrace(traceID string, args ...interface{}) {
 	if lg.enableDebug {
-		lg.output(trackId, _LOGGER_DEPTH, DebugLevel, args...)
+		lg.output(traceID, _LOGGER_DEPTH, DebugLevel, args...)
 	}
 }
 
-func (lg *logger) DebugfTrack(trackId string, format string, args ...interface{}) {
+func (lg *logger) DebugfTrace(traceID string, format string, args ...interface{}) {
 	if lg.enableDebug {
-		lg.outputf(trackId, _LOGGER_DEPTH, DebugLevel, format, args...)
+		lg.outputf(traceID, _LOGGER_DEPTH, DebugLevel, format, args...)
 	}
 }
 
-func (lg *logger) DebugDepthTrack(trackId string, depth int, args ...interface{}) {
+func (lg *logger) DebugDepthTrace(traceID string, depth int, args ...interface{}) {
 	if lg.enableDebug {
-		lg.output(trackId, _LOGGER_DEPTH+depth, DebugLevel, args...)
+		lg.output(traceID, _LOGGER_DEPTH+depth, DebugLevel, args...)
 	}
 }
 
-func (lg *logger) DebugfDepthTrack(trackId string, depth int, format string, args ...interface{}) {
+func (lg *logger) DebugfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if lg.enableDebug {
-		lg.outputf(trackId, _LOGGER_DEPTH+depth, DebugLevel, format, args...)
+		lg.outputf(traceID, _LOGGER_DEPTH+depth, DebugLevel, format, args...)
 	}
 }
 
@@ -503,27 +503,27 @@ func (lg *logger) InfofDepth(depth int, format string, args ...interface{}) {
 	}
 }
 
-func (lg *logger) InfoTrack(trackId string, args ...interface{}) {
+func (lg *logger) InfoTrace(traceID string, args ...interface{}) {
 	if lg.enableInfo {
-		lg.output(trackId, _LOGGER_DEPTH, InfoLevel, args...)
+		lg.output(traceID, _LOGGER_DEPTH, InfoLevel, args...)
 	}
 }
 
-func (lg *logger) InfofTrack(trackId string, format string, args ...interface{}) {
+func (lg *logger) InfofTrace(traceID string, format string, args ...interface{}) {
 	if lg.enableInfo {
-		lg.outputf(trackId, _LOGGER_DEPTH, InfoLevel, format, args...)
+		lg.outputf(traceID, _LOGGER_DEPTH, InfoLevel, format, args...)
 	}
 }
 
-func (lg *logger) InfoDepthTrack(trackId string, depth int, args ...interface{}) {
+func (lg *logger) InfoDepthTrace(traceID string, depth int, args ...interface{}) {
 	if lg.enableInfo {
-		lg.output(trackId, _LOGGER_DEPTH+depth, InfoLevel, args...)
+		lg.output(traceID, _LOGGER_DEPTH+depth, InfoLevel, args...)
 	}
 }
 
-func (lg *logger) InfofDepthTrack(trackId string, depth int, format string, args ...interface{}) {
+func (lg *logger) InfofDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if lg.enableInfo {
-		lg.outputf(trackId, _LOGGER_DEPTH+depth, InfoLevel, format, args...)
+		lg.outputf(traceID, _LOGGER_DEPTH+depth, InfoLevel, format, args...)
 	}
 }
 
@@ -551,27 +551,27 @@ func (lg *logger) WarnfDepth(depth int, format string, args ...interface{}) {
 	}
 }
 
-func (lg *logger) WarnTrack(trackId string, args ...interface{}) {
+func (lg *logger) WarnTrace(traceID string, args ...interface{}) {
 	if lg.enableWarn {
-		lg.output(trackId, _LOGGER_DEPTH, WarnLevel, args...)
+		lg.output(traceID, _LOGGER_DEPTH, WarnLevel, args...)
 	}
 }
 
-func (lg *logger) WarnfTrack(trackId string, format string, args ...interface{}) {
+func (lg *logger) WarnfTrace(traceID string, format string, args ...interface{}) {
 	if lg.enableWarn {
-		lg.outputf(trackId, _LOGGER_DEPTH, WarnLevel, format, args...)
+		lg.outputf(traceID, _LOGGER_DEPTH, WarnLevel, format, args...)
 	}
 }
 
-func (lg *logger) WarnDepthTrack(trackId string, depth int, args ...interface{}) {
+func (lg *logger) WarnDepthTrace(traceID string, depth int, args ...interface{}) {
 	if lg.enableWarn {
-		lg.output(trackId, _LOGGER_DEPTH+depth, WarnLevel, args...)
+		lg.output(traceID, _LOGGER_DEPTH+depth, WarnLevel, args...)
 	}
 }
 
-func (lg *logger) WarnfDepthTrack(trackId string, depth int, format string, args ...interface{}) {
+func (lg *logger) WarnfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if lg.enableWarn {
-		lg.outputf(trackId, _LOGGER_DEPTH+depth, WarnLevel, format, args...)
+		lg.outputf(traceID, _LOGGER_DEPTH+depth, WarnLevel, format, args...)
 	}
 }
 
@@ -599,27 +599,27 @@ func (lg *logger) ErrorfDepth(depth int, format string, args ...interface{}) {
 	}
 }
 
-func (lg *logger) ErrorTrack(trackId string, args ...interface{}) {
+func (lg *logger) ErrorTrace(traceID string, args ...interface{}) {
 	if lg.enableError {
-		lg.output(trackId, _LOGGER_DEPTH, ErrorLevel, args...)
+		lg.output(traceID, _LOGGER_DEPTH, ErrorLevel, args...)
 	}
 }
 
-func (lg *logger) ErrorfTrack(trackId string, format string, args ...interface{}) {
+func (lg *logger) ErrorfTrace(traceID string, format string, args ...interface{}) {
 	if lg.enableError {
-		lg.outputf(trackId, _LOGGER_DEPTH, ErrorLevel, format, args...)
+		lg.outputf(traceID, _LOGGER_DEPTH, ErrorLevel, format, args...)
 	}
 }
 
-func (lg *logger) ErrorDepthTrack(trackId string, depth int, args ...interface{}) {
+func (lg *logger) ErrorDepthTrace(traceID string, depth int, args ...interface{}) {
 	if lg.enableError {
-		lg.output(trackId, _LOGGER_DEPTH+depth, ErrorLevel, args...)
+		lg.output(traceID, _LOGGER_DEPTH+depth, ErrorLevel, args...)
 	}
 }
 
-func (lg *logger) ErrorfDepthTrack(trackId string, depth int, format string, args ...interface{}) {
+func (lg *logger) ErrorfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if lg.enableError {
-		lg.outputf(trackId, _LOGGER_DEPTH+depth, ErrorLevel, format, args...)
+		lg.outputf(traceID, _LOGGER_DEPTH+depth, ErrorLevel, format, args...)
 	}
 }
 

@@ -9,22 +9,27 @@ import (
 	"runtime/debug"
 )
 
+// Level 表示日志级别
 type Level byte
 
 const (
+	// DebugLevel 表示 debug 级别
 	DebugLevel Level = 'D'
-	InfoLevel  Level = 'I'
-	WarnLevel  Level = 'W'
+	// InfoLevel 表示 info 级别
+	InfoLevel Level = 'I'
+	// WarnLevel 表示 warn 级别
+	WarnLevel Level = 'W'
+	// ErrorLevel 表示 error 级别
 	ErrorLevel Level = 'E'
-	// 这个级别在 recover panic 的时候自动使用的。
+	// PanicLevel 这个级别在 recover panic 的时候自动使用的。
 	PanicLevel Level = 'P'
 )
 
 const (
 	// 默认日志的 depth
-	_DEFAULT_DEPTH = 3
+	defaultDepth = 3
 	// 日志的默认 depth
-	_LOGGER_DEPTH = 3
+	loggerDepth = 3
 )
 
 // Logger 表示一个日志记录器。
@@ -137,224 +142,224 @@ func SetLevel(levels ...Level) {
 // Debug 使用默认 Logger 输出日志。
 func Debug(args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.output("", _DEFAULT_DEPTH, DebugLevel, args...)
+		defaultLogger.output("", defaultDepth, DebugLevel, args...)
 	}
 }
 
 // Debugf 使用默认 Logger 输出日志。
 func Debugf(format string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.outputf("", _DEFAULT_DEPTH, DebugLevel, format, args...)
+		defaultLogger.outputf("", defaultDepth, DebugLevel, format, args...)
 	}
 }
 
 // DebugDepth 使用默认 Logger 输出日志。
 func DebugDepth(depth int, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.output("", _DEFAULT_DEPTH, DebugLevel, args...)
+		defaultLogger.output("", defaultDepth, DebugLevel, args...)
 	}
 }
 
 // DebugfDepth 使用默认 Logger 输出日志。
 func DebugfDepth(depth int, format string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.outputf("", _DEFAULT_DEPTH, DebugLevel, format, args...)
+		defaultLogger.outputf("", defaultDepth, DebugLevel, format, args...)
 	}
 }
 
 // DebugTrace 使用默认 Logger 输出日志。
 func DebugTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.output(traceID, _DEFAULT_DEPTH, DebugLevel, args...)
+		defaultLogger.output(traceID, defaultDepth, DebugLevel, args...)
 	}
 }
 
 // DebugfTrace 使用默认 Logger 输出日志。
 func DebugfTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, DebugLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultDepth, DebugLevel, format, args...)
 	}
 }
 
 // DebugDepthTrace 使用默认 Logger 输出日志。
 func DebugDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.output(traceID, _DEFAULT_DEPTH, DebugLevel, args...)
+		defaultLogger.output(traceID, defaultDepth, DebugLevel, args...)
 	}
 }
 
 // DebugfDepthTrace 使用默认 Logger 输出日志。
 func DebugfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, DebugLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultDepth, DebugLevel, format, args...)
 	}
 }
 
 // Info 使用默认 Logger 输出日志。
 func Info(args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.output("", _DEFAULT_DEPTH, InfoLevel, args...)
+		defaultLogger.output("", defaultDepth, InfoLevel, args...)
 	}
 }
 
 // Infof 使用默认 Logger 输出日志。
 func Infof(format string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.outputf("", _DEFAULT_DEPTH, InfoLevel, format, args...)
+		defaultLogger.outputf("", defaultDepth, InfoLevel, format, args...)
 	}
 }
 
 // InfoDepth 使用默认 Logger 输出日志。
 func InfoDepth(depth int, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.output("", _DEFAULT_DEPTH, InfoLevel, args...)
+		defaultLogger.output("", defaultDepth, InfoLevel, args...)
 	}
 }
 
 // InfofDepth 使用默认 Logger 输出日志。
 func InfofDepth(depth int, format string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.outputf("", _DEFAULT_DEPTH, InfoLevel, format, args...)
+		defaultLogger.outputf("", defaultDepth, InfoLevel, format, args...)
 	}
 }
 
 // InfoTrace 使用默认 Logger 输出日志。
 func InfoTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.output(traceID, _DEFAULT_DEPTH, InfoLevel, args...)
+		defaultLogger.output(traceID, defaultDepth, InfoLevel, args...)
 	}
 }
 
 // InfofTrace 使用默认 Logger 输出日志。
 func InfofTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, InfoLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultDepth, InfoLevel, format, args...)
 	}
 }
 
 // InfoDepthTrace 使用默认 Logger 输出日志。
 func InfoDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.output(traceID, _DEFAULT_DEPTH, InfoLevel, args...)
+		defaultLogger.output(traceID, defaultDepth, InfoLevel, args...)
 	}
 }
 
 // InfofDepthTrace 使用默认 Logger 输出日志。
 func InfofDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, InfoLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultDepth, InfoLevel, format, args...)
 	}
 }
 
 // Warn 使用默认 Logger 输出日志。
 func Warn(args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.output("", _DEFAULT_DEPTH, WarnLevel, args...)
+		defaultLogger.output("", defaultDepth, WarnLevel, args...)
 	}
 }
 
 // Warnf 使用默认 Logger 输出日志。
 func Warnf(format string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.outputf("", _DEFAULT_DEPTH, WarnLevel, format, args...)
+		defaultLogger.outputf("", defaultDepth, WarnLevel, format, args...)
 	}
 }
 
 // WarnDepth 使用默认 Logger 输出日志。
 func WarnDepth(depth int, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.output("", _DEFAULT_DEPTH, WarnLevel, args...)
+		defaultLogger.output("", defaultDepth, WarnLevel, args...)
 	}
 }
 
 // WarnfDepth 使用默认 Logger 输出日志。
 func WarnfDepth(depth int, format string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.outputf("", _DEFAULT_DEPTH, WarnLevel, format, args...)
+		defaultLogger.outputf("", defaultDepth, WarnLevel, format, args...)
 	}
 }
 
 // WarnTrace 使用默认 Logger 输出日志。
 func WarnTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.output(traceID, _DEFAULT_DEPTH, WarnLevel, args...)
+		defaultLogger.output(traceID, defaultDepth, WarnLevel, args...)
 	}
 }
 
 // WarnfTrace 使用默认 Logger 输出日志。
 func WarnfTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, WarnLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultDepth, WarnLevel, format, args...)
 	}
 }
 
 // WarnDepthTrace 使用默认 Logger 输出日志。
 func WarnDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.output(traceID, _DEFAULT_DEPTH, WarnLevel, args...)
+		defaultLogger.output(traceID, defaultDepth, WarnLevel, args...)
 	}
 }
 
 // WarnfDepthTrace 使用默认 Logger 输出日志。
 func WarnfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, WarnLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultDepth, WarnLevel, format, args...)
 	}
 }
 
 // Error 使用默认 Logger 输出日志。
 func Error(args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.output("", _DEFAULT_DEPTH, ErrorLevel, args...)
+		defaultLogger.output("", defaultDepth, ErrorLevel, args...)
 	}
 }
 
 // Errorf 使用默认 Logger 输出日志。
 func Errorf(format string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.outputf("", _DEFAULT_DEPTH, ErrorLevel, format, args...)
+		defaultLogger.outputf("", defaultDepth, ErrorLevel, format, args...)
 	}
 }
 
 // ErrorDepth 使用默认 Logger 输出日志。
 func ErrorDepth(depth int, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.output("", _DEFAULT_DEPTH, ErrorLevel, args...)
+		defaultLogger.output("", defaultDepth, ErrorLevel, args...)
 	}
 }
 
 // ErrorfDepth 使用默认 Logger 输出日志。
 func ErrorfDepth(depth int, format string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.outputf("", _DEFAULT_DEPTH, ErrorLevel, format, args...)
+		defaultLogger.outputf("", defaultDepth, ErrorLevel, format, args...)
 	}
 }
 
-// Error 使用默认 Logger 输出日志。
+// ErrorTrace 使用默认 Logger 输出日志。
 func ErrorTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.output(traceID, _DEFAULT_DEPTH, ErrorLevel, args...)
+		defaultLogger.output(traceID, defaultDepth, ErrorLevel, args...)
 	}
 }
 
-// Errorf 使用默认 Logger 输出日志。
+// ErrorfTrace 使用默认 Logger 输出日志。
 func ErrorfTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, ErrorLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultDepth, ErrorLevel, format, args...)
 	}
 }
 
 // ErrorDepthTrace 使用默认 Logger 输出日志。
 func ErrorDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.output(traceID, _DEFAULT_DEPTH, ErrorLevel, args...)
+		defaultLogger.output(traceID, defaultDepth, ErrorLevel, args...)
 	}
 }
 
 // ErrorfDepthTrace 使用默认 Logger 输出日志。
 func ErrorfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.outputf(traceID, _DEFAULT_DEPTH, ErrorLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultDepth, ErrorLevel, format, args...)
 	}
 }
 
@@ -433,193 +438,193 @@ func (lg *logger) SetLevel(levels ...Level) {
 
 func (lg *logger) Debug(args ...interface{}) {
 	if lg.enableDebug {
-		lg.output("", _LOGGER_DEPTH, DebugLevel, args...)
+		lg.output("", loggerDepth, DebugLevel, args...)
 	}
 }
 
 func (lg *logger) Debugf(format string, args ...interface{}) {
 	if lg.enableDebug {
-		lg.outputf("", _LOGGER_DEPTH, DebugLevel, format, args...)
+		lg.outputf("", loggerDepth, DebugLevel, format, args...)
 	}
 }
 
 func (lg *logger) DebugDepth(depth int, args ...interface{}) {
 	if lg.enableDebug {
-		lg.output("", _LOGGER_DEPTH+depth, DebugLevel, args...)
+		lg.output("", loggerDepth+depth, DebugLevel, args...)
 	}
 }
 
 func (lg *logger) DebugfDepth(depth int, format string, args ...interface{}) {
 	if lg.enableDebug {
-		lg.outputf("", _LOGGER_DEPTH+depth, DebugLevel, format, args...)
+		lg.outputf("", loggerDepth+depth, DebugLevel, format, args...)
 	}
 }
 
 func (lg *logger) DebugTrace(traceID string, args ...interface{}) {
 	if lg.enableDebug {
-		lg.output(traceID, _LOGGER_DEPTH, DebugLevel, args...)
+		lg.output(traceID, loggerDepth, DebugLevel, args...)
 	}
 }
 
 func (lg *logger) DebugfTrace(traceID string, format string, args ...interface{}) {
 	if lg.enableDebug {
-		lg.outputf(traceID, _LOGGER_DEPTH, DebugLevel, format, args...)
+		lg.outputf(traceID, loggerDepth, DebugLevel, format, args...)
 	}
 }
 
 func (lg *logger) DebugDepthTrace(traceID string, depth int, args ...interface{}) {
 	if lg.enableDebug {
-		lg.output(traceID, _LOGGER_DEPTH+depth, DebugLevel, args...)
+		lg.output(traceID, loggerDepth+depth, DebugLevel, args...)
 	}
 }
 
 func (lg *logger) DebugfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if lg.enableDebug {
-		lg.outputf(traceID, _LOGGER_DEPTH+depth, DebugLevel, format, args...)
+		lg.outputf(traceID, loggerDepth+depth, DebugLevel, format, args...)
 	}
 }
 
 func (lg *logger) Info(args ...interface{}) {
 	if lg.enableInfo {
-		lg.output("", _LOGGER_DEPTH, InfoLevel, args...)
+		lg.output("", loggerDepth, InfoLevel, args...)
 	}
 }
 
 func (lg *logger) Infof(format string, args ...interface{}) {
 	if lg.enableInfo {
-		lg.outputf("", _LOGGER_DEPTH, InfoLevel, format, args...)
+		lg.outputf("", loggerDepth, InfoLevel, format, args...)
 	}
 }
 
 func (lg *logger) InfoDepth(depth int, args ...interface{}) {
 	if lg.enableInfo {
-		lg.output("", _LOGGER_DEPTH+depth, InfoLevel, args...)
+		lg.output("", loggerDepth+depth, InfoLevel, args...)
 	}
 }
 
 func (lg *logger) InfofDepth(depth int, format string, args ...interface{}) {
 	if lg.enableInfo {
-		lg.outputf("", _LOGGER_DEPTH+depth, InfoLevel, format, args...)
+		lg.outputf("", loggerDepth+depth, InfoLevel, format, args...)
 	}
 }
 
 func (lg *logger) InfoTrace(traceID string, args ...interface{}) {
 	if lg.enableInfo {
-		lg.output(traceID, _LOGGER_DEPTH, InfoLevel, args...)
+		lg.output(traceID, loggerDepth, InfoLevel, args...)
 	}
 }
 
 func (lg *logger) InfofTrace(traceID string, format string, args ...interface{}) {
 	if lg.enableInfo {
-		lg.outputf(traceID, _LOGGER_DEPTH, InfoLevel, format, args...)
+		lg.outputf(traceID, loggerDepth, InfoLevel, format, args...)
 	}
 }
 
 func (lg *logger) InfoDepthTrace(traceID string, depth int, args ...interface{}) {
 	if lg.enableInfo {
-		lg.output(traceID, _LOGGER_DEPTH+depth, InfoLevel, args...)
+		lg.output(traceID, loggerDepth+depth, InfoLevel, args...)
 	}
 }
 
 func (lg *logger) InfofDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if lg.enableInfo {
-		lg.outputf(traceID, _LOGGER_DEPTH+depth, InfoLevel, format, args...)
+		lg.outputf(traceID, loggerDepth+depth, InfoLevel, format, args...)
 	}
 }
 
 func (lg *logger) Warn(args ...interface{}) {
 	if lg.enableWarn {
-		lg.output("", _LOGGER_DEPTH, WarnLevel, args...)
+		lg.output("", loggerDepth, WarnLevel, args...)
 	}
 }
 
 func (lg *logger) Warnf(format string, args ...interface{}) {
 	if lg.enableWarn {
-		lg.outputf("", _LOGGER_DEPTH, WarnLevel, format, args...)
+		lg.outputf("", loggerDepth, WarnLevel, format, args...)
 	}
 }
 
 func (lg *logger) WarnDepth(depth int, args ...interface{}) {
 	if lg.enableWarn {
-		lg.output("", _LOGGER_DEPTH+depth, WarnLevel, args...)
+		lg.output("", loggerDepth+depth, WarnLevel, args...)
 	}
 }
 
 func (lg *logger) WarnfDepth(depth int, format string, args ...interface{}) {
 	if lg.enableWarn {
-		lg.outputf("", _LOGGER_DEPTH+depth, WarnLevel, format, args...)
+		lg.outputf("", loggerDepth+depth, WarnLevel, format, args...)
 	}
 }
 
 func (lg *logger) WarnTrace(traceID string, args ...interface{}) {
 	if lg.enableWarn {
-		lg.output(traceID, _LOGGER_DEPTH, WarnLevel, args...)
+		lg.output(traceID, loggerDepth, WarnLevel, args...)
 	}
 }
 
 func (lg *logger) WarnfTrace(traceID string, format string, args ...interface{}) {
 	if lg.enableWarn {
-		lg.outputf(traceID, _LOGGER_DEPTH, WarnLevel, format, args...)
+		lg.outputf(traceID, loggerDepth, WarnLevel, format, args...)
 	}
 }
 
 func (lg *logger) WarnDepthTrace(traceID string, depth int, args ...interface{}) {
 	if lg.enableWarn {
-		lg.output(traceID, _LOGGER_DEPTH+depth, WarnLevel, args...)
+		lg.output(traceID, loggerDepth+depth, WarnLevel, args...)
 	}
 }
 
 func (lg *logger) WarnfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if lg.enableWarn {
-		lg.outputf(traceID, _LOGGER_DEPTH+depth, WarnLevel, format, args...)
+		lg.outputf(traceID, loggerDepth+depth, WarnLevel, format, args...)
 	}
 }
 
 func (lg *logger) Error(args ...interface{}) {
 	if lg.enableError {
-		lg.output("", _LOGGER_DEPTH, ErrorLevel, args...)
+		lg.output("", loggerDepth, ErrorLevel, args...)
 	}
 }
 
 func (lg *logger) Errorf(format string, args ...interface{}) {
 	if lg.enableError {
-		lg.outputf("", _LOGGER_DEPTH, ErrorLevel, format, args...)
+		lg.outputf("", loggerDepth, ErrorLevel, format, args...)
 	}
 }
 
 func (lg *logger) ErrorDepth(depth int, args ...interface{}) {
 	if lg.enableError {
-		lg.output("", _LOGGER_DEPTH+depth, ErrorLevel, args...)
+		lg.output("", loggerDepth+depth, ErrorLevel, args...)
 	}
 }
 
 func (lg *logger) ErrorfDepth(depth int, format string, args ...interface{}) {
 	if lg.enableError {
-		lg.outputf("", _LOGGER_DEPTH+depth, ErrorLevel, format, args...)
+		lg.outputf("", loggerDepth+depth, ErrorLevel, format, args...)
 	}
 }
 
 func (lg *logger) ErrorTrace(traceID string, args ...interface{}) {
 	if lg.enableError {
-		lg.output(traceID, _LOGGER_DEPTH, ErrorLevel, args...)
+		lg.output(traceID, loggerDepth, ErrorLevel, args...)
 	}
 }
 
 func (lg *logger) ErrorfTrace(traceID string, format string, args ...interface{}) {
 	if lg.enableError {
-		lg.outputf(traceID, _LOGGER_DEPTH, ErrorLevel, format, args...)
+		lg.outputf(traceID, loggerDepth, ErrorLevel, format, args...)
 	}
 }
 
 func (lg *logger) ErrorDepthTrace(traceID string, depth int, args ...interface{}) {
 	if lg.enableError {
-		lg.output(traceID, _LOGGER_DEPTH+depth, ErrorLevel, args...)
+		lg.output(traceID, loggerDepth+depth, ErrorLevel, args...)
 	}
 }
 
 func (lg *logger) ErrorfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if lg.enableError {
-		lg.outputf(traceID, _LOGGER_DEPTH+depth, ErrorLevel, format, args...)
+		lg.outputf(traceID, loggerDepth+depth, ErrorLevel, format, args...)
 	}
 }
 

@@ -32,6 +32,38 @@ const (
 	loggerDepth = 3
 )
 
+var (
+	// 默认 logger ，在 init 函数中初始化。
+	defaultLogger *logger
+	// 用于检索 panic 堆栈那一行的信息。
+	runtimePanic = []byte("runtime/panic.go")
+)
+
+func init() {
+	// 使用网卡来初始化默认 logger 的 appID 。
+	addr, err := net.Interfaces()
+	if nil != err {
+		panic(err)
+	}
+	// 第一个网卡的 MAC 地址
+	appID := ""
+	for i := 0; i < len(addr); i++ {
+		if addr[i].Flags|net.FlagUp != 0 && len(addr[i].HardwareAddr) != 0 {
+			appID = addr[i].HardwareAddr.String()
+			break
+		}
+	}
+	// 默认 logger
+	defaultLogger = &logger{
+		Writer:      os.Stdout,
+		Header:      NewHeaderFormater("filePathStack", appID),
+		enableDebug: true,
+		enableInfo:  true,
+		enableWarn:  true,
+		enableError: true,
+	}
+}
+
 // Logger 表示一个日志记录器。
 type Logger interface {
 	// 设置日志头格式化接口。
@@ -78,38 +110,6 @@ type Logger interface {
 	ErrorfDepthTrace(traceID string, depth int, format string, args ...interface{})
 	// Recover 检索出 panic 的文件和行数，如果 recover 不为 nil 。
 	Recover(recover interface{})
-}
-
-var (
-	// 默认 logger ，在 init 函数中初始化。
-	defaultLogger *logger
-	// 用于检索 panic 堆栈那一行的信息。
-	runtimePanic = []byte("runtime/panic.go")
-)
-
-func init() {
-	// 使用网卡来初始化默认 logger 的 appID 。
-	addr, err := net.Interfaces()
-	if nil != err {
-		panic(err)
-	}
-	// 第一个网卡的 MAC 地址
-	appID := ""
-	for i := 0; i < len(addr); i++ {
-		if addr[i].Flags|net.FlagUp != 0 && len(addr[i].HardwareAddr) != 0 {
-			appID = addr[i].HardwareAddr.String()
-			break
-		}
-	}
-	// 默认 logger
-	defaultLogger = &logger{
-		Writer:      os.Stdout,
-		Header:      NewHeaderFormater("filePathStack", appID),
-		enableDebug: true,
-		enableInfo:  true,
-		enableWarn:  true,
-		enableError: true,
-	}
 }
 
 // NewLogger 返回一个 Logger 实例。output 和 headerFormater 是初始化参数。
@@ -431,7 +431,7 @@ func (lg *logger) SetLevel(levels ...Level) {
 		case WarnLevel:
 			lg.enableWarn = true
 		case ErrorLevel:
-			lg.enableDebug = true
+			lg.enableError = true
 		}
 	}
 }

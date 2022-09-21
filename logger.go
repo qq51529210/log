@@ -629,6 +629,9 @@ func (lg *logger) ErrorfDepthTrace(traceID string, depth int, format string, arg
 }
 
 func (lg *logger) Recover(recover interface{}) {
+	if recover == nil {
+		return
+	}
 	b := debug.Stack()
 	found := false
 	n := 0

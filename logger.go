@@ -26,6 +26,8 @@ const (
 )
 
 const (
+	// 默认日志的 depth
+	defaultLoggerDepth = 3
 	// 日志的默认 depth
 	loggerDepth = 3
 )
@@ -140,224 +142,224 @@ func SetLevel(levels ...Level) {
 // Debug 使用默认 Logger 输出日志。
 func Debug(args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.output("", 0, DebugLevel, args...)
+		defaultLogger.output("", defaultLoggerDepth, DebugLevel, args...)
 	}
 }
 
 // Debugf 使用默认 Logger 输出日志。
 func Debugf(format string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.outputf("", 0, DebugLevel, format, args...)
+		defaultLogger.outputf("", defaultLoggerDepth, DebugLevel, format, args...)
 	}
 }
 
 // DebugDepth 使用默认 Logger 输出日志。
 func DebugDepth(depth int, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.output("", depth, DebugLevel, args...)
+		defaultLogger.output("", depth+defaultLoggerDepth+defaultLoggerDepth, DebugLevel, args...)
 	}
 }
 
 // DebugfDepth 使用默认 Logger 输出日志。
 func DebugfDepth(depth int, format string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.outputf("", depth, DebugLevel, format, args...)
+		defaultLogger.outputf("", depth+defaultLoggerDepth+defaultLoggerDepth, DebugLevel, format, args...)
 	}
 }
 
 // DebugTrace 使用默认 Logger 输出日志。
 func DebugTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.output(traceID, 0, DebugLevel, args...)
+		defaultLogger.output(traceID, defaultLoggerDepth, DebugLevel, args...)
 	}
 }
 
 // DebugfTrace 使用默认 Logger 输出日志。
 func DebugfTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.outputf(traceID, 0, DebugLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultLoggerDepth, DebugLevel, format, args...)
 	}
 }
 
 // DebugDepthTrace 使用默认 Logger 输出日志。
 func DebugDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.output(traceID, depth, DebugLevel, args...)
+		defaultLogger.output(traceID, depth+defaultLoggerDepth+defaultLoggerDepth, DebugLevel, args...)
 	}
 }
 
 // DebugfDepthTrace 使用默认 Logger 输出日志。
 func DebugfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableDebug {
-		defaultLogger.outputf(traceID, depth, DebugLevel, format, args...)
+		defaultLogger.outputf(traceID, depth+defaultLoggerDepth+defaultLoggerDepth, DebugLevel, format, args...)
 	}
 }
 
 // Info 使用默认 Logger 输出日志。
 func Info(args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.output("", 0, InfoLevel, args...)
+		defaultLogger.output("", defaultLoggerDepth, InfoLevel, args...)
 	}
 }
 
 // Infof 使用默认 Logger 输出日志。
 func Infof(format string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.outputf("", 0, InfoLevel, format, args...)
+		defaultLogger.outputf("", defaultLoggerDepth, InfoLevel, format, args...)
 	}
 }
 
 // InfoDepth 使用默认 Logger 输出日志。
 func InfoDepth(depth int, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.output("", depth, InfoLevel, args...)
+		defaultLogger.output("", depth+defaultLoggerDepth+defaultLoggerDepth, InfoLevel, args...)
 	}
 }
 
 // InfofDepth 使用默认 Logger 输出日志。
 func InfofDepth(depth int, format string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.outputf("", depth, InfoLevel, format, args...)
+		defaultLogger.outputf("", depth+defaultLoggerDepth+defaultLoggerDepth, InfoLevel, format, args...)
 	}
 }
 
 // InfoTrace 使用默认 Logger 输出日志。
 func InfoTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.output(traceID, 0, InfoLevel, args...)
+		defaultLogger.output(traceID, defaultLoggerDepth, InfoLevel, args...)
 	}
 }
 
 // InfofTrace 使用默认 Logger 输出日志。
 func InfofTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.outputf(traceID, 0, InfoLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultLoggerDepth, InfoLevel, format, args...)
 	}
 }
 
 // InfoDepthTrace 使用默认 Logger 输出日志。
 func InfoDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.output(traceID, depth, InfoLevel, args...)
+		defaultLogger.output(traceID, depth+defaultLoggerDepth, InfoLevel, args...)
 	}
 }
 
 // InfofDepthTrace 使用默认 Logger 输出日志。
 func InfofDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableInfo {
-		defaultLogger.outputf(traceID, depth, InfoLevel, format, args...)
+		defaultLogger.outputf(traceID, depth+defaultLoggerDepth, InfoLevel, format, args...)
 	}
 }
 
 // Warn 使用默认 Logger 输出日志。
 func Warn(args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.output("", 0, WarnLevel, args...)
+		defaultLogger.output("", defaultLoggerDepth, WarnLevel, args...)
 	}
 }
 
 // Warnf 使用默认 Logger 输出日志。
 func Warnf(format string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.outputf("", 0, WarnLevel, format, args...)
+		defaultLogger.outputf("", defaultLoggerDepth, WarnLevel, format, args...)
 	}
 }
 
 // WarnDepth 使用默认 Logger 输出日志。
 func WarnDepth(depth int, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.output("", depth, WarnLevel, args...)
+		defaultLogger.output("", depth+defaultLoggerDepth, WarnLevel, args...)
 	}
 }
 
 // WarnfDepth 使用默认 Logger 输出日志。
 func WarnfDepth(depth int, format string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.outputf("", depth, WarnLevel, format, args...)
+		defaultLogger.outputf("", depth+defaultLoggerDepth, WarnLevel, format, args...)
 	}
 }
 
 // WarnTrace 使用默认 Logger 输出日志。
 func WarnTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.output(traceID, 0, WarnLevel, args...)
+		defaultLogger.output(traceID, defaultLoggerDepth, WarnLevel, args...)
 	}
 }
 
 // WarnfTrace 使用默认 Logger 输出日志。
 func WarnfTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.outputf(traceID, 0, WarnLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultLoggerDepth, WarnLevel, format, args...)
 	}
 }
 
 // WarnDepthTrace 使用默认 Logger 输出日志。
 func WarnDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.output(traceID, depth, WarnLevel, args...)
+		defaultLogger.output(traceID, depth+defaultLoggerDepth, WarnLevel, args...)
 	}
 }
 
 // WarnfDepthTrace 使用默认 Logger 输出日志。
 func WarnfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableWarn {
-		defaultLogger.outputf(traceID, depth, WarnLevel, format, args...)
+		defaultLogger.outputf(traceID, depth+defaultLoggerDepth, WarnLevel, format, args...)
 	}
 }
 
 // Error 使用默认 Logger 输出日志。
 func Error(args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.output("", 0, ErrorLevel, args...)
+		defaultLogger.output("", defaultLoggerDepth, ErrorLevel, args...)
 	}
 }
 
 // Errorf 使用默认 Logger 输出日志。
 func Errorf(format string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.outputf("", 0, ErrorLevel, format, args...)
+		defaultLogger.outputf("", defaultLoggerDepth, ErrorLevel, format, args...)
 	}
 }
 
 // ErrorDepth 使用默认 Logger 输出日志。
 func ErrorDepth(depth int, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.output("", depth, ErrorLevel, args...)
+		defaultLogger.output("", depth+defaultLoggerDepth, ErrorLevel, args...)
 	}
 }
 
 // ErrorfDepth 使用默认 Logger 输出日志。
 func ErrorfDepth(depth int, format string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.outputf("", depth, ErrorLevel, format, args...)
+		defaultLogger.outputf("", depth+defaultLoggerDepth, ErrorLevel, format, args...)
 	}
 }
 
 // ErrorTrace 使用默认 Logger 输出日志。
 func ErrorTrace(traceID string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.output(traceID, 0, ErrorLevel, args...)
+		defaultLogger.output(traceID, defaultLoggerDepth, ErrorLevel, args...)
 	}
 }
 
 // ErrorfTrace 使用默认 Logger 输出日志。
 func ErrorfTrace(traceID string, format string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.outputf(traceID, 0, ErrorLevel, format, args...)
+		defaultLogger.outputf(traceID, defaultLoggerDepth, ErrorLevel, format, args...)
 	}
 }
 
 // ErrorDepthTrace 使用默认 Logger 输出日志。
 func ErrorDepthTrace(traceID string, depth int, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.output(traceID, depth, ErrorLevel, args...)
+		defaultLogger.output(traceID, depth+defaultLoggerDepth, ErrorLevel, args...)
 	}
 }
 
 // ErrorfDepthTrace 使用默认 Logger 输出日志。
 func ErrorfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
 	if defaultLogger.enableError {
-		defaultLogger.outputf(traceID, depth, ErrorLevel, format, args...)
+		defaultLogger.outputf(traceID, depth+defaultLoggerDepth, ErrorLevel, format, args...)
 	}
 }
 

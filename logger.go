@@ -73,6 +73,7 @@ type Logger interface {
 	// 设置允许输出的日志的级别，没有被设置的级别不会输出日志，一般在程序运行的时候设置。
 	SetLevel(levels ...Level)
 	// Debug 级别的方法。
+	IsDebug() bool
 	Debug(args ...interface{})
 	Debugf(format string, args ...interface{})
 	DebugDepth(depth int, args ...interface{})
@@ -82,6 +83,7 @@ type Logger interface {
 	DebugDepthTrace(traceID string, depth int, args ...interface{})
 	DebugfDepthTrace(traceID string, depth int, format string, args ...interface{})
 	// Info 级别的方法。
+	IsInfo() bool
 	Info(args ...interface{})
 	Infof(format string, args ...interface{})
 	InfoDepth(depth int, args ...interface{})
@@ -91,6 +93,7 @@ type Logger interface {
 	InfoDepthTrace(traceID string, depth int, args ...interface{})
 	InfofDepthTrace(traceID string, depth int, format string, args ...interface{})
 	// Warn 级别的方法。
+	IsWarn() bool
 	Warn(args ...interface{})
 	Warnf(format string, args ...interface{})
 	WarnDepth(depth int, args ...interface{})
@@ -100,6 +103,7 @@ type Logger interface {
 	WarnDepthTrace(traceID string, depth int, args ...interface{})
 	WarnfDepthTrace(traceID string, depth int, format string, args ...interface{})
 	// Error 级别的方法。
+	IsError() bool
 	Error(args ...interface{})
 	Errorf(format string, args ...interface{})
 	ErrorDepth(depth int, args ...interface{})
@@ -110,262 +114,6 @@ type Logger interface {
 	ErrorfDepthTrace(traceID string, depth int, format string, args ...interface{})
 	// Recover 检索出 panic 的文件和行数，如果 recover 不为 nil 。
 	Recover(recover interface{})
-}
-
-// NewLogger 返回一个 Logger 实例。output 和 headerFormater 是初始化参数。
-func NewLogger(output io.Writer, headerFormater HeaderFormater) Logger {
-	lg := new(logger)
-	lg.Writer = output
-	lg.Header = headerFormater
-	lg.enableDebug = true
-	lg.enableInfo = true
-	lg.enableWarn = true
-	lg.enableError = true
-	return lg
-}
-
-// SetOutput 设置默认 Logger 的输出。
-func SetOutput(output io.Writer) {
-	defaultLogger.SetOutput(output)
-}
-
-// SetHeaderFormater 设置默认 Logger 的 HeaderFormater 。
-func SetHeaderFormater(headerFormater HeaderFormater) {
-	defaultLogger.SetHeaderFormater(headerFormater)
-}
-
-// SetLevel 设置默认 Logger 的输出级别 。
-func SetLevel(levels ...Level) {
-	defaultLogger.SetLevel(levels...)
-}
-
-// Debug 使用默认 Logger 输出日志。
-func Debug(args ...interface{}) {
-	if defaultLogger.enableDebug {
-		defaultLogger.output("", defaultLoggerDepth, DebugLevel, args...)
-	}
-}
-
-// Debugf 使用默认 Logger 输出日志。
-func Debugf(format string, args ...interface{}) {
-	if defaultLogger.enableDebug {
-		defaultLogger.outputf("", defaultLoggerDepth, DebugLevel, format, args...)
-	}
-}
-
-// DebugDepth 使用默认 Logger 输出日志。
-func DebugDepth(depth int, args ...interface{}) {
-	if defaultLogger.enableDebug {
-		defaultLogger.output("", depth+defaultLoggerDepth+defaultLoggerDepth, DebugLevel, args...)
-	}
-}
-
-// DebugfDepth 使用默认 Logger 输出日志。
-func DebugfDepth(depth int, format string, args ...interface{}) {
-	if defaultLogger.enableDebug {
-		defaultLogger.outputf("", depth+defaultLoggerDepth+defaultLoggerDepth, DebugLevel, format, args...)
-	}
-}
-
-// DebugTrace 使用默认 Logger 输出日志。
-func DebugTrace(traceID string, args ...interface{}) {
-	if defaultLogger.enableDebug {
-		defaultLogger.output(traceID, defaultLoggerDepth, DebugLevel, args...)
-	}
-}
-
-// DebugfTrace 使用默认 Logger 输出日志。
-func DebugfTrace(traceID string, format string, args ...interface{}) {
-	if defaultLogger.enableDebug {
-		defaultLogger.outputf(traceID, defaultLoggerDepth, DebugLevel, format, args...)
-	}
-}
-
-// DebugDepthTrace 使用默认 Logger 输出日志。
-func DebugDepthTrace(traceID string, depth int, args ...interface{}) {
-	if defaultLogger.enableDebug {
-		defaultLogger.output(traceID, depth+defaultLoggerDepth+defaultLoggerDepth, DebugLevel, args...)
-	}
-}
-
-// DebugfDepthTrace 使用默认 Logger 输出日志。
-func DebugfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
-	if defaultLogger.enableDebug {
-		defaultLogger.outputf(traceID, depth+defaultLoggerDepth+defaultLoggerDepth, DebugLevel, format, args...)
-	}
-}
-
-// Info 使用默认 Logger 输出日志。
-func Info(args ...interface{}) {
-	if defaultLogger.enableInfo {
-		defaultLogger.output("", defaultLoggerDepth, InfoLevel, args...)
-	}
-}
-
-// Infof 使用默认 Logger 输出日志。
-func Infof(format string, args ...interface{}) {
-	if defaultLogger.enableInfo {
-		defaultLogger.outputf("", defaultLoggerDepth, InfoLevel, format, args...)
-	}
-}
-
-// InfoDepth 使用默认 Logger 输出日志。
-func InfoDepth(depth int, args ...interface{}) {
-	if defaultLogger.enableInfo {
-		defaultLogger.output("", depth+defaultLoggerDepth+defaultLoggerDepth, InfoLevel, args...)
-	}
-}
-
-// InfofDepth 使用默认 Logger 输出日志。
-func InfofDepth(depth int, format string, args ...interface{}) {
-	if defaultLogger.enableInfo {
-		defaultLogger.outputf("", depth+defaultLoggerDepth+defaultLoggerDepth, InfoLevel, format, args...)
-	}
-}
-
-// InfoTrace 使用默认 Logger 输出日志。
-func InfoTrace(traceID string, args ...interface{}) {
-	if defaultLogger.enableInfo {
-		defaultLogger.output(traceID, defaultLoggerDepth, InfoLevel, args...)
-	}
-}
-
-// InfofTrace 使用默认 Logger 输出日志。
-func InfofTrace(traceID string, format string, args ...interface{}) {
-	if defaultLogger.enableInfo {
-		defaultLogger.outputf(traceID, defaultLoggerDepth, InfoLevel, format, args...)
-	}
-}
-
-// InfoDepthTrace 使用默认 Logger 输出日志。
-func InfoDepthTrace(traceID string, depth int, args ...interface{}) {
-	if defaultLogger.enableInfo {
-		defaultLogger.output(traceID, depth+defaultLoggerDepth, InfoLevel, args...)
-	}
-}
-
-// InfofDepthTrace 使用默认 Logger 输出日志。
-func InfofDepthTrace(traceID string, depth int, format string, args ...interface{}) {
-	if defaultLogger.enableInfo {
-		defaultLogger.outputf(traceID, depth+defaultLoggerDepth, InfoLevel, format, args...)
-	}
-}
-
-// Warn 使用默认 Logger 输出日志。
-func Warn(args ...interface{}) {
-	if defaultLogger.enableWarn {
-		defaultLogger.output("", defaultLoggerDepth, WarnLevel, args...)
-	}
-}
-
-// Warnf 使用默认 Logger 输出日志。
-func Warnf(format string, args ...interface{}) {
-	if defaultLogger.enableWarn {
-		defaultLogger.outputf("", defaultLoggerDepth, WarnLevel, format, args...)
-	}
-}
-
-// WarnDepth 使用默认 Logger 输出日志。
-func WarnDepth(depth int, args ...interface{}) {
-	if defaultLogger.enableWarn {
-		defaultLogger.output("", depth+defaultLoggerDepth, WarnLevel, args...)
-	}
-}
-
-// WarnfDepth 使用默认 Logger 输出日志。
-func WarnfDepth(depth int, format string, args ...interface{}) {
-	if defaultLogger.enableWarn {
-		defaultLogger.outputf("", depth+defaultLoggerDepth, WarnLevel, format, args...)
-	}
-}
-
-// WarnTrace 使用默认 Logger 输出日志。
-func WarnTrace(traceID string, args ...interface{}) {
-	if defaultLogger.enableWarn {
-		defaultLogger.output(traceID, defaultLoggerDepth, WarnLevel, args...)
-	}
-}
-
-// WarnfTrace 使用默认 Logger 输出日志。
-func WarnfTrace(traceID string, format string, args ...interface{}) {
-	if defaultLogger.enableWarn {
-		defaultLogger.outputf(traceID, defaultLoggerDepth, WarnLevel, format, args...)
-	}
-}
-
-// WarnDepthTrace 使用默认 Logger 输出日志。
-func WarnDepthTrace(traceID string, depth int, args ...interface{}) {
-	if defaultLogger.enableWarn {
-		defaultLogger.output(traceID, depth+defaultLoggerDepth, WarnLevel, args...)
-	}
-}
-
-// WarnfDepthTrace 使用默认 Logger 输出日志。
-func WarnfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
-	if defaultLogger.enableWarn {
-		defaultLogger.outputf(traceID, depth+defaultLoggerDepth, WarnLevel, format, args...)
-	}
-}
-
-// Error 使用默认 Logger 输出日志。
-func Error(args ...interface{}) {
-	if defaultLogger.enableError {
-		defaultLogger.output("", defaultLoggerDepth, ErrorLevel, args...)
-	}
-}
-
-// Errorf 使用默认 Logger 输出日志。
-func Errorf(format string, args ...interface{}) {
-	if defaultLogger.enableError {
-		defaultLogger.outputf("", defaultLoggerDepth, ErrorLevel, format, args...)
-	}
-}
-
-// ErrorDepth 使用默认 Logger 输出日志。
-func ErrorDepth(depth int, args ...interface{}) {
-	if defaultLogger.enableError {
-		defaultLogger.output("", depth+defaultLoggerDepth, ErrorLevel, args...)
-	}
-}
-
-// ErrorfDepth 使用默认 Logger 输出日志。
-func ErrorfDepth(depth int, format string, args ...interface{}) {
-	if defaultLogger.enableError {
-		defaultLogger.outputf("", depth+defaultLoggerDepth, ErrorLevel, format, args...)
-	}
-}
-
-// ErrorTrace 使用默认 Logger 输出日志。
-func ErrorTrace(traceID string, args ...interface{}) {
-	if defaultLogger.enableError {
-		defaultLogger.output(traceID, defaultLoggerDepth, ErrorLevel, args...)
-	}
-}
-
-// ErrorfTrace 使用默认 Logger 输出日志。
-func ErrorfTrace(traceID string, format string, args ...interface{}) {
-	if defaultLogger.enableError {
-		defaultLogger.outputf(traceID, defaultLoggerDepth, ErrorLevel, format, args...)
-	}
-}
-
-// ErrorDepthTrace 使用默认 Logger 输出日志。
-func ErrorDepthTrace(traceID string, depth int, args ...interface{}) {
-	if defaultLogger.enableError {
-		defaultLogger.output(traceID, depth+defaultLoggerDepth, ErrorLevel, args...)
-	}
-}
-
-// ErrorfDepthTrace 使用默认 Logger 输出日志。
-func ErrorfDepthTrace(traceID string, depth int, format string, args ...interface{}) {
-	if defaultLogger.enableError {
-		defaultLogger.outputf(traceID, depth+defaultLoggerDepth, ErrorLevel, format, args...)
-	}
-}
-
-// Recover 使用默认 Logger 输出日志。
-func Recover(recover interface{}) {
-	defaultLogger.Recover(recover)
 }
 
 type logger struct {
@@ -436,6 +184,10 @@ func (lg *logger) SetLevel(levels ...Level) {
 	}
 }
 
+func (lg *logger) IsDebug() bool {
+	return lg.enableDebug
+}
+
 func (lg *logger) Debug(args ...interface{}) {
 	if lg.enableDebug {
 		lg.output("", loggerDepth, DebugLevel, args...)
@@ -482,6 +234,10 @@ func (lg *logger) DebugfDepthTrace(traceID string, depth int, format string, arg
 	if lg.enableDebug {
 		lg.outputf(traceID, loggerDepth+depth, DebugLevel, format, args...)
 	}
+}
+
+func (lg *logger) IsInfo() bool {
+	return lg.enableInfo
 }
 
 func (lg *logger) Info(args ...interface{}) {
@@ -532,6 +288,10 @@ func (lg *logger) InfofDepthTrace(traceID string, depth int, format string, args
 	}
 }
 
+func (lg *logger) IsWarn() bool {
+	return lg.enableWarn
+}
+
 func (lg *logger) Warn(args ...interface{}) {
 	if lg.enableWarn {
 		lg.output("", loggerDepth, WarnLevel, args...)
@@ -578,6 +338,10 @@ func (lg *logger) WarnfDepthTrace(traceID string, depth int, format string, args
 	if lg.enableWarn {
 		lg.outputf(traceID, loggerDepth+depth, WarnLevel, format, args...)
 	}
+}
+
+func (lg *logger) IsError() bool {
+	return lg.enableError
 }
 
 func (lg *logger) Error(args ...interface{}) {

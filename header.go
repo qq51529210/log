@@ -53,16 +53,15 @@ func (h *defaultHeader) Format(log *Log, traceID string, level Level, depth int)
 	log.line = append(log.line, ' ')
 	// level
 	log.line = append(log.line, byte(level))
-	log.line = append(log.line, ' ')
 	// app id
 	if h.appID != "" {
-		log.line = append(log.line, h.appID...)
 		log.line = append(log.line, ' ')
+		log.line = append(log.line, h.appID...)
 	}
 	// trace id
 	if traceID != "" {
-		log.line = append(log.line, traceID...)
 		log.line = append(log.line, ' ')
+		log.line = append(log.line, traceID...)
 	}
 }
 

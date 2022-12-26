@@ -48,9 +48,6 @@ type defaultHeader struct {
 }
 
 func (h *defaultHeader) Format(log *Log, traceID string, level Level, depth int) {
-	// time
-	FormatTime(log)
-	log.line = append(log.line, ' ')
 	// level
 	log.line = append(log.line, byte(level))
 	// app id
@@ -58,6 +55,9 @@ func (h *defaultHeader) Format(log *Log, traceID string, level Level, depth int)
 		log.line = append(log.line, ' ')
 		log.line = append(log.line, h.appID...)
 	}
+	// time
+	log.line = append(log.line, ' ')
+	FormatTime(log)
 	// trace id
 	if traceID != "" {
 		log.line = append(log.line, ' ')
@@ -68,19 +68,19 @@ func (h *defaultHeader) Format(log *Log, traceID string, level Level, depth int)
 func (h *defaultHeader) FormatWith(log *Log, traceID string, level Level, path, line string) {
 	// level
 	log.line = append(log.line, byte(level))
-	log.line = append(log.line, ' ')
 	// app id
 	if h.appID != "" {
+		log.line = append(log.line, ' ')
 		log.line = append(log.line, h.appID...)
-		log.line = append(log.line, ' ')
-	}
-	// trace id
-	if traceID != "" {
-		log.line = append(log.line, traceID...)
-		log.line = append(log.line, ' ')
 	}
 	// time
+	log.line = append(log.line, ' ')
 	FormatTime(log)
+	// trace id
+	if traceID != "" {
+		log.line = append(log.line, ' ')
+		log.line = append(log.line, traceID...)
+	}
 }
 
 // fileNameStackHeader format is "AppID Level Date Time StackFileName:CodeLine"
@@ -89,8 +89,17 @@ type fileNameStackHeader struct {
 }
 
 func (h *fileNameStackHeader) Format(log *Log, traceID string, level Level, depth int) {
-	h.defaultHeader.Format(log, traceID, level, depth)
+	// level
+	log.line = append(log.line, byte(level))
+	// app id
+	if h.appID != "" {
+		log.line = append(log.line, ' ')
+		log.line = append(log.line, h.appID...)
+	}
+	// time
 	log.line = append(log.line, ' ')
+	FormatTime(log)
+	// path line
 	_, path, line, ok := runtime.Caller(depth)
 	if !ok {
 		path = "???"
@@ -103,23 +112,44 @@ func (h *fileNameStackHeader) Format(log *Log, traceID string, level Level, dept
 			}
 		}
 	}
+	log.line = append(log.line, ' ')
 	log.WriteString(path)
 	log.line = append(log.line, ':')
 	log.WriteInt(line)
+	// trace id
+	if traceID != "" {
+		log.line = append(log.line, ' ')
+		log.line = append(log.line, traceID...)
+	}
 }
 
 func (h *fileNameStackHeader) FormatWith(log *Log, traceID string, level Level, path, line string) {
-	h.defaultHeader.FormatWith(log, traceID, level, path, line)
+	// level
+	log.line = append(log.line, byte(level))
+	// app id
+	if h.appID != "" {
+		log.line = append(log.line, ' ')
+		log.line = append(log.line, h.appID...)
+	}
+	// time
 	log.line = append(log.line, ' ')
+	FormatTime(log)
+	// path line
 	for i := len(path) - 1; i > 0; i-- {
 		if path[i] == filepath.Separator {
 			path = path[i+1:]
 			break
 		}
 	}
+	log.line = append(log.line, ' ')
 	log.WriteString(path)
 	log.line = append(log.line, ':')
 	log.WriteString(line)
+	// trace id
+	if traceID != "" {
+		log.line = append(log.line, ' ')
+		log.line = append(log.line, traceID...)
+	}
 }
 
 // fileNameStackHeader format is "AppID Level Date Time StackFilePath:CodeLine"
@@ -128,24 +158,54 @@ type filePathStackHeader struct {
 }
 
 func (h *filePathStackHeader) Format(log *Log, traceID string, level Level, depth int) {
-	h.defaultHeader.Format(log, traceID, level, depth)
+	// level
+	log.line = append(log.line, byte(level))
+	// app id
+	if h.appID != "" {
+		log.line = append(log.line, ' ')
+		log.line = append(log.line, h.appID...)
+	}
+	// time
 	log.line = append(log.line, ' ')
+	FormatTime(log)
+	// path line
 	_, path, line, ok := runtime.Caller(depth)
 	if !ok {
 		path = "???"
 		line = -1
 	}
+	log.line = append(log.line, ' ')
 	log.WriteString(path)
 	log.line = append(log.line, ':')
 	log.WriteInt(line)
+	// trace id
+	if traceID != "" {
+		log.line = append(log.line, ' ')
+		log.line = append(log.line, traceID...)
+	}
 }
 
 func (h *filePathStackHeader) FormatWith(log *Log, traceID string, level Level, path, line string) {
-	h.defaultHeader.FormatWith(log, traceID, level, path, line)
+	// level
+	log.line = append(log.line, byte(level))
+	// app id
+	if h.appID != "" {
+		log.line = append(log.line, ' ')
+		log.line = append(log.line, h.appID...)
+	}
+	// time
+	log.line = append(log.line, ' ')
+	FormatTime(log)
+	// path line
 	log.line = append(log.line, ' ')
 	log.WriteString(path)
 	log.line = append(log.line, ':')
 	log.WriteString(line)
+	// trace id
+	if traceID != "" {
+		log.line = append(log.line, ' ')
+		log.line = append(log.line, traceID...)
+	}
 }
 
 // FormatTime format is "2006-01-02 15:04:05.000000"

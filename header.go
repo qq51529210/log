@@ -50,6 +50,7 @@ type defaultHeader struct {
 func (h *defaultHeader) Format(log *Log, traceID string, level Level, depth int) {
 	// time
 	FormatTime(log)
+	log.line = append(log.line, ' ')
 	// level
 	log.line = append(log.line, byte(level))
 	log.line = append(log.line, ' ')

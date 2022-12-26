@@ -116,6 +116,7 @@ func (h *fileNameStackHeader) Format(log *Log, traceID string, level Level, dept
 	log.WriteString(path)
 	log.line = append(log.line, ':')
 	log.WriteInt(line)
+	log.line = append(log.line, ':')
 	// trace id
 	if traceID != "" {
 		log.line = append(log.line, ' ')
@@ -145,6 +146,7 @@ func (h *fileNameStackHeader) FormatWith(log *Log, traceID string, level Level, 
 	log.WriteString(path)
 	log.line = append(log.line, ':')
 	log.WriteString(line)
+	log.line = append(log.line, ':')
 	// trace id
 	if traceID != "" {
 		log.line = append(log.line, ' ')
@@ -178,6 +180,7 @@ func (h *filePathStackHeader) Format(log *Log, traceID string, level Level, dept
 	log.WriteString(path)
 	log.line = append(log.line, ':')
 	log.WriteInt(line)
+	log.line = append(log.line, ':')
 	// trace id
 	if traceID != "" {
 		log.line = append(log.line, ' ')
@@ -201,6 +204,7 @@ func (h *filePathStackHeader) FormatWith(log *Log, traceID string, level Level, 
 	log.WriteString(path)
 	log.line = append(log.line, ':')
 	log.WriteString(line)
+	log.line = append(log.line, ':')
 	// trace id
 	if traceID != "" {
 		log.line = append(log.line, ' ')

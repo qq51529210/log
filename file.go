@@ -121,26 +121,37 @@ func (f *File) Write(b []byte) (int, error) {
 // syncLoop 运行在一个协程中。
 func (f *File) syncLoop(syncDur time.Duration) {
 	syncTimer := time.NewTicker(syncDur)
-	syncTicker := time.NewTicker(f.maxKeepDuraion)
 	defer func() {
-		syncTicker.Stop()
 		syncTimer.Stop()
+		f.lock.Lock()
+		f.flush()
+		f.close()
+		f.lock.Unlock()
 		f.wait.Done()
 	}()
-	// 先检查一次
-	f.check(time.Now())
+	checkTime := time.Now()
+	// 程序退出
+	quit := make(chan os.Signal, 1)
+	// 先检查一次过期
+	f.check(&checkTime)
 	for f.closed {
 		select {
-		case now := <-syncTicker.C:
-			// 检查过期文件
-			f.check(now)
-		case <-syncTimer.C:
+		case now := <-syncTimer.C:
+			// 检查过期
+			if now.Sub(checkTime) > f.maxKeepDuraion {
+				f.check(&checkTime)
+				checkTime = now
+			}
 			// 同步时间
 			f.lock.Lock()
 			f.flush()
 			f.lock.Unlock()
+			// 计时器
+			syncTimer.Reset(syncDur)
 		case <-f.exit:
 			// 退出信号
+			return
+		case <-quit:
 			return
 		}
 	}
@@ -167,7 +178,7 @@ func (f *File) Close() error {
 }
 
 // check 检查过期文件。
-func (f *File) check(now time.Time) {
+func (f *File) check(now *time.Time) {
 	// 读取根目录下的所有文件
 	infos, err := ioutil.ReadDir(f.rootDir)
 	if nil != err {

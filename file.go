@@ -65,9 +65,10 @@ func NewFile(conf *FileConfig) (*File, error) {
 	f.maxFileSize = int(size)
 	f.exit = make(chan struct{})
 	f.maxKeepDuraion = keepDuraion
-	if conf.Std == "err" {
+	switch conf.Std{
+	case "err":
 		f.std = os.Stderr
-	} else {
+	case "out":
 		f.std = os.Stdout
 	}
 	// 先打开文件准备

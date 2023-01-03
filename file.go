@@ -65,7 +65,7 @@ func NewFile(conf *FileConfig) (*File, error) {
 	f.maxFileSize = int(size)
 	f.exit = make(chan struct{})
 	f.maxKeepDuraion = keepDuraion
-	switch conf.Std{
+	switch conf.Std {
 	case "err":
 		f.std = os.Stderr
 	case "out":
@@ -245,5 +245,48 @@ func (f *File) close() {
 	if nil != f.file {
 		f.file.Close()
 		f.file = nil
+	}
+}
+
+// openLast 打开上一个最新的文件
+func (f *File) openLast() {
+	now := time.Now()
+	// 创建目录，root/date
+	dateDir := filepath.Join(f.rootDir, now.Format("20060102"))
+	err := os.MkdirAll(dateDir, os.ModePerm)
+	if nil != err {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	// 读取根目录下的所有文件
+	infos, err := ioutil.ReadDir(dateDir)
+	if nil != err {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	// 没有文件
+	fileName := now.Format("20060102150405000000")
+	if len(infos) > 1 {
+		// 循环检查
+		t := infos[0].ModTime()
+		idx := 0
+		// 找出最新的文件时间
+		for i := 1; i < len(infos); i++ {
+			m := infos[i].ModTime()
+			if m.After(t) {
+				t = m
+				idx = i
+			}
+		}
+		// 最新的大小
+		if infos[idx].Size() < int64(f.maxFileSize) {
+			fileName = infos[idx].Name()
+		}
+	}
+	// 创建日志文件，root/date/time.ms
+	timeFile := filepath.Join(dateDir, fileName)
+	f.file, err = os.OpenFile(timeFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
+	if nil != err {
+		fmt.Fprintln(os.Stderr, err)
 	}
 }

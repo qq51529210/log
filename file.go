@@ -72,7 +72,7 @@ func NewFile(conf *FileConfig) (*File, error) {
 		f.std = os.Stdout
 	}
 	// 先打开文件准备
-	f.open()
+	f.openLast()
 	// 启动同步协程
 	f.wait.Add(1)
 	go f.syncLoop(syncDur)

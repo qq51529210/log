@@ -134,7 +134,7 @@ func (f *File) syncLoop(syncDur time.Duration) {
 	quit := make(chan os.Signal, 1)
 	// 先检查一次过期
 	f.check(&checkTime)
-	for f.closed {
+	for !f.closed {
 		select {
 		case now := <-syncTimer.C:
 			// 检查过期

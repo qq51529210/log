@@ -3,6 +3,7 @@ package log
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -34,6 +35,8 @@ type FileConfig struct {
 	// 同步到磁盘的时间间隔，单位，毫秒。最小是10毫秒。
 	// 注意的是，如果文件大小达到 MaxFileSize ，那么立即同步。
 	SyncInterval int
+	// 是否输出到控制台，out/err
+	Std string
 }
 
 // NewFile 返回一个 File 实例。
@@ -62,6 +65,11 @@ func NewFile(conf *FileConfig) (*File, error) {
 	f.maxFileSize = int(size)
 	f.exit = make(chan struct{})
 	f.maxKeepDuraion = keepDuraion
+	if conf.Std == "err" {
+		f.std = os.Stderr
+	} else {
+		f.std = os.Stdout
+	}
 	// 先打开文件准备
 	f.open()
 	// 启动同步协程
@@ -94,6 +102,8 @@ type File struct {
 	curFileSize int
 	// 磁盘文件的最大字节
 	maxFileSize int
+	// 控制台输出
+	std io.Writer
 }
 
 // Write 是 io.Writer 接口。
@@ -115,6 +125,9 @@ func (f *File) Write(b []byte) (int, error) {
 		f.open()
 	}
 	f.lock.Unlock()
+	if f.std != nil {
+		f.std.Write(b)
+	}
 	return len(b), nil
 }
 

@@ -18,6 +18,10 @@ const (
 	minKeepDay = 24 * time.Hour
 	// 最小同步间隔
 	minSyncDur = 100 * time.Millisecond
+	// 目录格式
+	dirNameFormat = "20060102"
+	// 文件格式
+	fileNameFormat = "20060102150405.000000"
 )
 
 var (
@@ -226,14 +230,14 @@ func (f *File) flush() {
 func (f *File) open() {
 	now := time.Now()
 	// 创建目录，root/date
-	dateDir := filepath.Join(f.rootDir, now.Format("20060102"))
+	dateDir := filepath.Join(f.rootDir, now.Format(dirNameFormat))
 	err := os.MkdirAll(dateDir, os.ModePerm)
 	if nil != err {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 	// 创建日志文件，root/date/time.ms
-	timeFile := filepath.Join(dateDir, now.Format("20060102150405.000000"))
+	timeFile := filepath.Join(dateDir, now.Format(fileNameFormat))
 	f.file, err = os.OpenFile(timeFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
 	if nil != err {
 		fmt.Fprintln(os.Stderr, err)
@@ -252,7 +256,7 @@ func (f *File) close() {
 func (f *File) openLast() {
 	now := time.Now()
 	// 创建目录，root/date
-	dateDir := filepath.Join(f.rootDir, now.Format("20060102"))
+	dateDir := filepath.Join(f.rootDir, now.Format(dirNameFormat))
 	err := os.MkdirAll(dateDir, os.ModePerm)
 	if nil != err {
 		fmt.Fprintln(os.Stderr, err)
@@ -265,7 +269,7 @@ func (f *File) openLast() {
 		return
 	}
 	// 没有文件
-	fileName := now.Format("20060102150405000000")
+	fileName := now.Format(fileNameFormat)
 	if len(infos) > 1 {
 		// 循环检查
 		t := infos[0].ModTime()

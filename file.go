@@ -293,4 +293,9 @@ func (f *File) openLast() {
 	if nil != err {
 		fmt.Fprintln(os.Stderr, err)
 	}
+	fi, err := f.file.Stat()
+	if nil != err {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	f.curFileSize = int(fi.Size())
 }

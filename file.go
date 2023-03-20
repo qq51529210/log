@@ -121,7 +121,7 @@ func (f *File) Write(b []byte) (int, error) {
 	}
 	// 添加到内存
 	f.data = append(f.data, b...)
-	f.curFileSize += len(f.data)
+	f.curFileSize += len(b)
 	// 如果内存数据达到最大了，换新文件输出
 	if f.curFileSize >= f.maxFileSize {
 		f.curFileSize = 0

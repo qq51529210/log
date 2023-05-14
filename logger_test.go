@@ -6,14 +6,23 @@ import (
 )
 
 func Test_Logger(t *testing.T) {
-	lg := NewLogger(os.Stdout, DefaultHeader, "default")
+	lg := NewLogger(os.Stdout, new(DefaultHeader), "default")
 	testLoggerDebug(t, lg)
+	testLoggerInfo(t, lg)
+	testLoggerWarn(t, lg)
+	testLoggerError(t, lg)
 	//
-	lg = NewLogger(os.Stdout, FileNameHeader, "file name")
+	lg = NewLogger(os.Stdout, new(FileNameHeader), "file name")
 	testLoggerDebug(t, lg)
+	testLoggerInfo(t, lg)
+	testLoggerWarn(t, lg)
+	testLoggerError(t, lg)
 	//
-	lg = NewLogger(os.Stdout, FilePathHeader, "file path")
+	lg = NewLogger(os.Stdout, new(FilePathHeader), "file path")
 	testLoggerDebug(t, lg)
+	testLoggerInfo(t, lg)
+	testLoggerWarn(t, lg)
+	testLoggerError(t, lg)
 }
 
 func testLoggerDebug(t *testing.T, lg Logger) {
@@ -27,57 +36,59 @@ func testLoggerDebug(t *testing.T, lg Logger) {
 	lg.DebugfDepthTrace(0, "trace", "%d", 1)
 }
 
-// func test_Debug() {
-// 	Debug("Debug:", logText)
-// 	Debugf("Debugf: %s", logText)
-// 	DebugDepth(0, "DebugDepth:", logText)
-// 	DebugfDepth(1, "DebugDepthf: %s", logText)
-// 	DebugTrace("trace-id-1", "Debug:", logText)
-// 	DebugfTrace("trace-id-2", "Debugf: %s", logText)
-// 	DebugDepthTrace("trace-id-3", 0, "DebugDepth:", logText)
-// 	DebugfDepthTrace("trace-id-4", 1, "DebugDepthf: %s", logText)
-// }
+func testLoggerInfo(t *testing.T, lg Logger) {
+	lg.Info(1, 2, 3)
+	lg.Infof("%d", 1)
+	lg.InfoDepth(0, 1, 2, 3)
+	lg.InfofDepth(0, "%d", 1)
+	lg.InfoTrace("trace", 1, 2)
+	lg.InfofTrace("trace", "%d", 1)
+	lg.InfoDepthTrace(0, "trace", 1, 2)
+	lg.InfofDepthTrace(0, "trace", "%d", 1)
+}
 
-// func test_Info() {
-// 	Info("Info:", logText)
-// 	Infof("Infof: %s", logText)
-// 	InfoDepth(0, "InfoDepth:", logText)
-// 	InfofDepth(1, "InfoDepthf: %s", logText)
-// 	InfoTrace("trace-id-1", "Info:", logText)
-// 	InfofTrace("trace-id-2", "Infof: %s", logText)
-// 	InfoDepthTrace("trace-id-3", 0, "InfoDepth:", logText)
-// 	InfofDepthTrace("trace-id-4", 1, "InfoDepthf: %s", logText)
-// }
+func testLoggerWarn(t *testing.T, lg Logger) {
+	lg.Warn(1, 2, 3)
+	lg.Warnf("%d", 1)
+	lg.WarnDepth(0, 1, 2, 3)
+	lg.WarnfDepth(0, "%d", 1)
+	lg.WarnTrace("trace", 1, 2)
+	lg.WarnfTrace("trace", "%d", 1)
+	lg.WarnDepthTrace(0, "trace", 1, 2)
+	lg.WarnfDepthTrace(0, "trace", "%d", 1)
+}
 
-// func test_Warn() {
-// 	Warn("Warn:", logText)
-// 	Warnf("Warnf: %s", logText)
-// 	WarnDepth(0, "WarnDepth:", logText)
-// 	WarnfDepth(1, "WarnDepthf: %s", logText)
-// 	WarnTrace("trace-id-1", "Warn:", logText)
-// 	WarnfTrace("trace-id-2", "Warnf: %s", logText)
-// 	WarnDepthTrace("trace-id-3", 0, "WarnDepth:", logText)
-// 	WarnfDepthTrace("trace-id-4", 1, "WarnDepthf: %s", logText)
-// }
+func testLoggerError(t *testing.T, lg Logger) {
+	lg.Error(1, 2, 3)
+	lg.Errorf("%d", 1)
+	lg.ErrorDepth(0, 1, 2, 3)
+	lg.ErrorfDepth(0, "%d", 1)
+	lg.ErrorTrace("trace", 1, 2)
+	lg.ErrorfTrace("trace", "%d", 1)
+	lg.ErrorDepthTrace(0, "trace", 1, 2)
+	lg.ErrorfDepthTrace(0, "trace", "%d", 1)
+}
 
-// func test_Error() {
-// 	Error("Error:", logText)
-// 	Errorf("Errorf: %s", logText)
-// 	ErrorDepth(0, "ErrorDepth:", logText)
-// 	ErrorfDepth(1, "ErrorDepthf: %s", logText)
-// 	ErrorTrace("trace-id-1", "Error:", logText)
-// 	ErrorfTrace("trace-id-2", "Errorf: %s", logText)
-// 	ErrorDepthTrace("trace-id-3", 0, "ErrorDepth:", logText)
-// 	ErrorfDepthTrace("trace-id-4", 1, "ErrorDepthf: %s", logText)
-// }
+func Test_Recover(t *testing.T) {
+	lg := NewLogger(os.Stdout, new(DefaultHeader), "default")
+	defer func() {
+		lg.Recover(recover())
+	}()
 
-// func Test_Recover(t *testing.T) {
-// 	defer func() {
-// 		Recover(recover())
-// 	}()
+	testRecover()
+}
 
-// 	panic("test recover")
-// }
+func testRecover() {
+	testRecover1()
+}
+
+func testRecover1() {
+	testRecover2()
+}
+
+func testRecover2() {
+	panic("test recover")
+}
 
 // func Benchmark_My_Logger(b *testing.B) {
 // 	b.ReportAllocs()

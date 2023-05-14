@@ -1,157 +1,127 @@
 package log
 
-// var (
-// 	logPool = sync.Pool{}
-// )
+import "sync"
 
-// func init() {
-// 	logPool.New = func() interface{} {
-// 		return new(Log)
-// 	}
-// }
+var (
+	// 用于格式化整数
+	intByte []byte
+	// 缓存池
+	logPool sync.Pool
+)
 
-// // A buffer used for format a line of logs.
-// type Log struct {
-// 	// Log buffer.
-// 	line []byte
-// 	// Integer format buffer.
-// 	fmt []byte
-// }
+func init() {
+	for i := 0; i < 10; i++ {
+		intByte = append(intByte, '0'+byte(i))
+	}
+	//
+	logPool.New = func() any {
+		return new(Log)
+	}
+}
 
-// // Implements io.Writer interface.
-// func (l *Log) Write(b []byte) (int, error) {
-// 	l.line = append(l.line, b...)
-// 	return len(b), nil
-// }
+// Log 用于写入一行日志
+type Log struct {
+	// 缓存
+	b []byte
+	// 用于整数格式化
+	f []byte
+}
 
-// // Return buffer.
-// func (l *Log) Data() []byte {
-// 	return l.line
-// }
+// Reset 重置缓存
+func (l *Log) Reset() {
+	l.b = l.b[:0]
+}
 
-// // Return string of buffer.
-// func (l *Log) String() string {
-// 	return string(l.line)
-// }
+// Write 实现 io.Writer
+func (l *Log) Write(data []byte) (int, error) {
+	l.b = append(l.b, data...)
+	return len(data), nil
+}
 
-// // Reset buffer.
-// func (l *Log) Reset() {
-// 	l.line = l.line[:0]
-// }
+// writeReversedInt 写入反转的整数
+func (l *Log) writeReversedInt(v int) {
+	l.f = l.f[:0]
+	// 零
+	if v == 0 {
+		l.f = append(l.f, '0')
+		return
+	}
+	// 1234 -> buff[4,3,2,1]
+	for v > 0 {
+		l.f = append(l.f, intByte[v%10])
+		v /= 10
+	}
+}
 
-// // Write a integer into buffer with right align format.
-// // If len(integer) < length, add 0 to the left.
-// // Example: 12 -> 0012 while length=4.
-// func (l *Log) WriteRightAlignInt(integer, length int) {
-// 	// Zero.
-// 	if integer == 0 {
-// 		for i := 0; i < length; i++ {
-// 			l.line = append(l.line, '0')
-// 		}
-// 		return
-// 	}
-// 	// Negative to positive.
-// 	if integer < 0 {
-// 		// Minus sign
-// 		l.line = append(l.line, '-')
-// 		integer = -integer
-// 	}
-// 	// 1234 -> buff[4,3,2,1]
-// 	l.fmt = l.fmt[:0]
-// 	for integer > 0 {
-// 		l.fmt = append(l.fmt, byte('0'+integer%10))
-// 		integer /= 10
-// 	}
-// 	// Add 0 to the left if len(integer) < length
-// 	if length > len(l.fmt) {
-// 		for i := len(l.fmt); i < length; i++ {
-// 			l.line = append(l.line, '0')
-// 		}
-// 	}
-// 	// buff[4,3,2,1]->line[1,2,3,4]
-// 	for i := len(l.fmt) - 1; i >= 0; i-- {
-// 		l.line = append(l.line, l.fmt[i])
-// 	}
-// }
+// reversed 将 l.f 的值反转，然后写入 b
+func (l *Log) reversed() {
+	for i, j := 0, len(l.f)-1; i < j; i, j = i+1, j-1 {
+		l.f[i], l.f[j] = l.f[j], l.f[i]
+	}
+	l.b = append(l.b, l.f...)
+}
 
-// // Write a integer into buffer with left align format.
-// // If len(integer) < length,add 0 to the right.
-// // Example:
-// //	12 -> 1200 while length=4.
-// //	1234 -> 12 while length=2.
-// func (l *Log) WriteLeftAlignInt(integer, length int) {
-// 	// Zero.
-// 	if integer == 0 {
-// 		for i := 0; i < length; i++ {
-// 			l.line = append(l.line, '0')
-// 		}
-// 		return
-// 	}
-// 	// Negative to positive.
-// 	if integer < 0 {
-// 		// Minus sign
-// 		l.line = append(l.line, '-')
-// 		integer = -integer
-// 	}
-// 	// 1234 -> buff[4,3,2,1]
-// 	l.fmt = l.fmt[:0]
-// 	for integer > 0 {
-// 		l.fmt = append(l.fmt, byte('0'+integer%10))
-// 		integer /= 10
-// 	}
-// 	if length < len(l.fmt) {
-// 		// buff[4,3,2,1]->line[1,2]
-// 		for i := len(l.fmt) - 1; i >= len(l.fmt)-length; i-- {
-// 			l.line = append(l.line, l.fmt[i])
-// 		}
-// 	} else {
-// 		// buff[4,3,2,1]->line[1,2,3,4]
-// 		for i := len(l.fmt) - 1; i >= 0; i-- {
-// 			l.line = append(l.line, l.fmt[i])
-// 		}
-// 		// Add 0 to the right.
-// 		for i := len(l.fmt); i < length; i++ {
-// 			l.line = append(l.line, '0')
-// 		}
-// 	}
-// }
+// WriteInt 写入整数
+func (l *Log) WriteInt(v int) {
+	if v < 0 {
+		// 负数
+		l.writeReversedInt(-v)
+		l.f = append(l.f, '-')
+	} else {
+		// 正数
+		l.writeReversedInt(v)
+	}
+	l.reversed()
+}
 
-// // Write a integer into buffer without algin format.
-// func (l *Log) WriteInt(integer int) {
-// 	// Zero.
-// 	if integer == 0 {
-// 		l.line = append(l.line, '0')
-// 		return
-// 	}
-// 	// Negative to positive.
-// 	if integer < 0 {
-// 		// Minus sign
-// 		l.line = append(l.line, '-')
-// 		integer = -integer
-// 	}
-// 	// 1234 -> buff[4,3,2,1]
-// 	l.fmt = l.fmt[:0]
-// 	for integer > 0 {
-// 		l.fmt = append(l.fmt, byte('0'+integer%10))
-// 		integer /= 10
-// 	}
-// 	// buff[4,3,2,1]->line[1,2,3,4]
-// 	for i := len(l.fmt) - 1; i >= 0; i-- {
-// 		l.line = append(l.line, l.fmt[i])
-// 	}
-// }
+// WriteIntRightAlign 写入整数，左侧补齐 n 个 0
+func (l *Log) WriteIntRightAlign(v, n int) {
+	if v < 0 {
+		// 负数
+		l.writeReversedInt(-v)
+		for i := len(l.f); i < n; i++ {
+			l.f = append(l.f, '0')
+		}
+		l.f = append(l.f, '-')
+	} else {
+		// 正数
+		l.writeReversedInt(v)
+		for i := len(l.f); i < n; i++ {
+			l.f = append(l.f, '0')
+		}
+	}
+	l.reversed()
+}
 
-// // Write a byte into buffer.
-// func (l *Log) WriteUint8(c byte) {
-// 	l.line = append(l.line, c)
-// }
+// WriteIntLeftAlign 写入整数，右侧补齐 0
+func (l *Log) WriteIntLeftAlign(v, n int) {
+	if v < 0 {
+		// 负数
+		l.writeReversedInt(-v)
+		n -= len(l.f)
+		l.f = append(l.f, '-')
+	} else {
+		// 正数
+		l.writeReversedInt(v)
+		n -= len(l.f)
+	}
+	l.reversed()
+	for i := 0; i < n; i++ {
+		l.b = append(l.b, '0')
+	}
+}
 
-// // Write binary array into buffer.
-// func (l *Log) WriteBytes(b []byte) {
-// 	l.line = append(l.line, b...)
-// }
+// WriteString 写入字符串
+func (l *Log) WriteString(s string) {
+	l.b = append(l.b, s...)
+}
 
-// // Write a string into buffer.
-// func (l *Log) WriteString(s string) {
-// 	l.line = append(l.line, s...)
-// }
+// WriteBytes 写入字节数组
+func (l *Log) WriteBytes(s []byte) {
+	l.b = append(l.b, s...)
+}
+
+// WriteByte 写入字节
+func (l *Log) WriteByte(s byte) {
+	l.b = append(l.b, s)
+}

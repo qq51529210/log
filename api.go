@@ -8,19 +8,24 @@ var (
 	// 级别
 	debugLevel = "[debug] "
 	infoLevel  = "[info] "
-	warngLevel = "[warn] "
+	warnLevel  = "[warn] "
 	errorLevel = "[error] "
 	panicLevel = "[panic] "
 )
 
 func init() {
 	// 默认 logger
-	defaultLogger = NewLogger(os.Stdout, DefaultHeader, "")
+	defaultLogger = NewLogger(os.Stdout, new(DefaultHeader), "")
 }
 
 // SetLogger 设置默认 Logger
 func SetLogger(lg Logger) {
 	defaultLogger = lg
+}
+
+// GetLogger 获取默认 Logger
+func GetLogger() Logger {
+	return defaultLogger
 }
 
 // import "io"

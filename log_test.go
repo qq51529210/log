@@ -1,76 +1,75 @@
 package log
 
-// func TestLog_WriteRightAlignInt(t *testing.T) {
-// 	log := new(Log)
+import "testing"
 
-// 	log.WriteRightAlignInt(1234, 7)
-// 	if log.String() != "0001234" {
-// 		t.FailNow()
-// 	}
+func Test_writeInt(t *testing.T) {
+	l := &Log{}
+	// 整数
+	n := 0
+	l.WriteInt(n)
+	if string(l.b) != "0" {
+		t.FailNow()
+	}
+	// 整数
+	n = 12345
+	l.Reset()
+	l.WriteInt(n)
+	if string(l.b) != "12345" {
+		t.FailNow()
+	}
+	// 负数
+	n = -n
+	l.Reset()
+	l.WriteInt(n)
+	if string(l.b) != "-12345" {
+		t.FailNow()
+	}
+}
 
-// 	log.Reset()
-// 	log.WriteRightAlignInt(-1234, 3)
-// 	if log.String() != "-1234" {
-// 		t.FailNow()
-// 	}
+func Test_writeIntLeftAlign(t *testing.T) {
+	l := &Log{}
+	// 整数
+	n := 0
+	l.WriteIntLeftAlign(n, 5)
+	if string(l.b) != "00000" {
+		t.FailNow()
+	}
+	// 整数
+	n = 123
+	l.Reset()
+	l.WriteIntLeftAlign(n, 6)
+	if string(l.b) != "123000" {
+		t.FailNow()
+	}
+	// 负数
+	n = -n
+	l.Reset()
+	l.WriteIntLeftAlign(n, 5)
+	if string(l.b) != "-12300" {
+		t.FailNow()
+	}
+}
 
-// 	log.Reset()
-// 	log.WriteRightAlignInt(-1234, 6)
-// 	if log.String() != "-001234" {
-// 		t.FailNow()
-// 	}
-
-// 	log.Reset()
-// 	log.WriteRightAlignInt(0, 4)
-// 	if log.String() != "0000" {
-// 		t.FailNow()
-// 	}
-// }
-
-// func TestLog_WriteLeftAlignInt(t *testing.T) {
-// 	log := new(Log)
-
-// 	log.WriteLeftAlignInt(1234, 7)
-// 	if log.String() != "1234000" {
-// 		t.FailNow()
-// 	}
-
-// 	log.Reset()
-// 	log.WriteLeftAlignInt(-1234, 2)
-// 	if log.String() != "-12" {
-// 		t.FailNow()
-// 	}
-
-// 	log.Reset()
-// 	log.WriteLeftAlignInt(-1234, 6)
-// 	if log.String() != "-123400" {
-// 		t.FailNow()
-// 	}
-
-// 	log.Reset()
-// 	log.WriteLeftAlignInt(0, 4)
-// 	if log.String() != "0000" {
-// 		t.FailNow()
-// 	}
-// }
-
-// func TestLog_WriteInt(t *testing.T) {
-// 	log := new(Log)
-
-// 	log.WriteInt(1234)
-// 	if log.String() != "1234" {
-// 		t.FailNow()
-// 	}
-
-// 	log.Reset()
-// 	log.WriteInt(-1234)
-// 	if log.String() != "-1234" {
-// 		t.FailNow()
-// 	}
-
-// 	log.Reset()
-// 	log.WriteInt(0)
-// 	if log.String() != "0" {
-// 		t.FailNow()
-// 	}
-// }
+func Test_writeIntRightAlign(t *testing.T) {
+	l := &Log{}
+	// 整数
+	n := 0
+	l.WriteIntRightAlign(n, 3)
+	if string(l.b) != "000" {
+		t.FailNow()
+	}
+	// 整数
+	n = 123
+	l.Reset()
+	l.WriteIntRightAlign(n, 4)
+	if string(l.b) != "0123" {
+		t.FailNow()
+	}
+	// 负数
+	n = -n
+	l.Reset()
+	l.WriteIntRightAlign(n, 5)
+	if string(l.b) != "-00123" {
+		t.FailNow()
+	}
+}

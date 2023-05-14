@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -198,7 +197,7 @@ func (f *File) Close() error {
 // check 检查过期文件。
 func (f *File) check(now *time.Time) {
 	// 读取根目录下的所有文件
-	infos, err := ioutil.ReadDir(f.rootDir)
+	dirEntries, err := os.ReadDir(f.rootDir)
 	if nil != err {
 		fmt.Fprintln(os.Stderr, err)
 		return
@@ -206,10 +205,16 @@ func (f *File) check(now *time.Time) {
 	// 应该删除的时间
 	delTime := now.Add(-f.maxKeepDuraion)
 	// 循环检查
-	for i := 0; i < len(infos); i++ {
+	for i := 0; i < len(dirEntries); i++ {
+		entry := dirEntries[i]
+		fi, err := entry.Info()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			continue
+		}
 		// 文件时间小于删除时间
-		if infos[i].ModTime().Sub(delTime) < 0 {
-			err = os.RemoveAll(filepath.Join(f.rootDir, infos[i].Name()))
+		if fi.ModTime().Sub(delTime) < 0 {
+			err = os.RemoveAll(filepath.Join(f.rootDir, fi.Name()))
 			if nil != err {
 				fmt.Fprintln(os.Stderr, err)
 			}
@@ -263,28 +268,39 @@ func (f *File) openLast() {
 		return
 	}
 	// 读取根目录下的所有文件
-	infos, err := ioutil.ReadDir(dateDir)
+	dirEntries, err := os.ReadDir(dateDir)
 	if nil != err {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
 	// 没有文件
 	fileName := now.Format(fileNameFormat)
-	if len(infos) > 1 {
+	if len(dirEntries) > 1 {
 		// 循环检查
-		t := infos[0].ModTime()
-		idx := 0
-		// 找出最新的文件时间
-		for i := 1; i < len(infos); i++ {
-			m := infos[i].ModTime()
-			if m.After(t) {
-				t = m
-				idx = i
+		dirEntry := dirEntries[0]
+		lastFI, err := dirEntry.Info()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		} else {
+			lastTime := lastFI.ModTime()
+			// 找出最新的文件时间
+			for i := 1; i < len(dirEntries); i++ {
+				dirEntry := dirEntries[i]
+				fi, err := dirEntry.Info()
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					continue
+				}
+				m := fi.ModTime()
+				if m.After(lastTime) {
+					lastTime = m
+					lastFI = fi
+				}
 			}
-		}
-		// 最新的大小
-		if infos[idx].Size() < int64(f.maxFileSize) {
-			fileName = infos[idx].Name()
+			// 最新的大小
+			if lastFI.Size() < int64(f.maxFileSize) {
+				fileName = lastFI.Name()
+			}
 		}
 	}
 	// 创建日志文件，root/date/time.ms

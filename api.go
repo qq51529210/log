@@ -6,11 +6,11 @@ var (
 	// 默认
 	defaultLogger *Logger
 	// 级别
-	debugLevel = "[debug] "
-	infoLevel  = "[info] "
-	warnLevel  = "[warn] "
-	errorLevel = "[error] "
-	panicLevel = "[panic] "
+	debugLevel = "[D] "
+	infoLevel  = "[I] "
+	warnLevel  = "[W] "
+	errorLevel = "[E] "
+	panicLevel = "[P] "
 )
 
 func init() {

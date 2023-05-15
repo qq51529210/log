@@ -18,6 +18,11 @@ func init() {
 	defaultLogger = NewLogger(os.Stdout, new(DefaultHeader), "")
 }
 
+// SetLogger 设置默认的 Logger
+func SetLogger(lg *Logger) {
+	defaultLogger = lg
+}
+
 // GetLogger 返回默认的 Logger
 func GetLogger() *Logger {
 	return defaultLogger

@@ -15,58 +15,8 @@ const (
 	loggerDepth = 3
 )
 
-// Logger 日志接口
-type Logger interface {
-	// 如果 recover 不为 nil 则打印堆栈
-	Recover(recover any)
-	// Debug 级别的方法
-	IsDebug() bool
-	EnableDebug(enable bool)
-	Debug(args ...any)
-	Debugf(format string, args ...any)
-	DebugDepth(depth int, args ...any)
-	DebugfDepth(depth int, format string, args ...any)
-	DebugTrace(traceID string, args ...any)
-	DebugfTrace(traceID string, format string, args ...any)
-	DebugDepthTrace(depth int, traceID string, args ...any)
-	DebugfDepthTrace(depth int, traceID string, format string, args ...any)
-	// Info 级别的方法。
-	IsInfo() bool
-	EnableInfo(enable bool)
-	Info(args ...any)
-	Infof(format string, args ...any)
-	InfoDepth(depth int, args ...any)
-	InfofDepth(depth int, format string, args ...any)
-	InfoTrace(traceID string, args ...any)
-	InfofTrace(traceID string, format string, args ...any)
-	InfoDepthTrace(depth int, traceID string, args ...any)
-	InfofDepthTrace(depth int, traceID string, format string, args ...any)
-	// Warn 级别的方法。
-	IsWarn() bool
-	EnableWarn(enable bool)
-	Warn(args ...any)
-	Warnf(format string, args ...any)
-	WarnDepth(depth int, args ...any)
-	WarnfDepth(depth int, format string, args ...any)
-	WarnTrace(traceID string, args ...any)
-	WarnfTrace(traceID string, format string, args ...any)
-	WarnDepthTrace(depth int, traceID string, args ...any)
-	WarnfDepthTrace(depth int, traceID string, format string, args ...any)
-	// Error 级别的方法。
-	IsError() bool
-	EnableError(enable bool)
-	Error(args ...any)
-	Errorf(format string, args ...any)
-	ErrorDepth(depth int, args ...any)
-	ErrorfDepth(depth int, format string, args ...any)
-	ErrorTrace(traceID string, args ...any)
-	ErrorfTrace(traceID string, format string, args ...any)
-	ErrorDepthTrace(depth int, traceID string, args ...any)
-	ErrorfDepthTrace(depth int, traceID string, format string, args ...any)
-}
-
-// logger 默认实现
-type logger struct {
+// Logger 默认实现
+type Logger struct {
 	// 输出
 	io.Writer
 	// 头格式
@@ -85,8 +35,8 @@ type logger struct {
 
 // NewLogger 返回默认的 Logger
 // 格式 "Header [name] [level] [tracID] text"
-func NewLogger(writer io.Writer, header Header, name string) Logger {
-	lg := new(logger)
+func NewLogger(writer io.Writer, header Header, name string) *Logger {
+	lg := new(Logger)
 	lg.Writer = writer
 	lg.Header = header
 	if name != "" {
@@ -95,7 +45,7 @@ func NewLogger(writer io.Writer, header Header, name string) Logger {
 	return lg
 }
 
-func (lg *logger) print(depth int, level *string, args ...any) {
+func (lg *Logger) print(depth int, level *string, args ...any) {
 	l := logPool.Get().(*Log)
 	l.b = l.b[:0]
 	// 名称
@@ -119,7 +69,7 @@ func (lg *logger) print(depth int, level *string, args ...any) {
 	logPool.Put(l)
 }
 
-func (lg *logger) printf(depth int, level, format *string, args ...any) {
+func (lg *Logger) printf(depth int, level, format *string, args ...any) {
 	l := logPool.Get().(*Log)
 	l.b = l.b[:0]
 	// 名称
@@ -143,7 +93,7 @@ func (lg *logger) printf(depth int, level, format *string, args ...any) {
 	logPool.Put(l)
 }
 
-func (lg *logger) printTrace(depth int, trace, level *string, args ...any) {
+func (lg *Logger) printTrace(depth int, trace, level *string, args ...any) {
 	l := logPool.Get().(*Log)
 	l.b = l.b[:0]
 	// 名称
@@ -172,7 +122,7 @@ func (lg *logger) printTrace(depth int, trace, level *string, args ...any) {
 	logPool.Put(l)
 }
 
-func (lg *logger) printfTrace(depth int, trace, level, format *string, args ...any) {
+func (lg *Logger) printfTrace(depth int, trace, level, format *string, args ...any) {
 	l := logPool.Get().(*Log)
 	l.b = l.b[:0]
 	// 名称
@@ -201,7 +151,8 @@ func (lg *logger) printfTrace(depth int, trace, level, format *string, args ...a
 	logPool.Put(l)
 }
 
-func (lg *logger) Recover(recover any) {
+// Recover 如果 recover 不为 nil，输出堆栈
+func (lg *Logger) Recover(recover any) {
 	if recover == nil {
 		return
 	}
@@ -248,7 +199,7 @@ func (lg *logger) Recover(recover any) {
 			continue
 		}
 		if !found {
-			found = isPanicGO(line)
+			found = hasPanicGO(line)
 			continue
 		}
 		// \t filepath/file.go:line +0x622
@@ -273,7 +224,7 @@ func (lg *logger) Recover(recover any) {
 	logPool.Put(l)
 }
 
-func isPanicGO(line []byte) bool {
+func hasPanicGO(line []byte) bool {
 	for i := len(line) - 1; i > 1; i-- {
 		if line[i] == '/' {
 			for j := i; j < len(line); j++ {
@@ -294,43 +245,50 @@ func isPanicGO(line []byte) bool {
 	return false
 }
 
-func (lg *logger) IsDebug() bool {
+// IsDebug 返回是否启用 debug
+func (lg *Logger) IsDebug() bool {
 	return !lg.disableDebug
 }
 
-func (lg *logger) EnableDebug(enable bool) {
+// EnableDebug 设置是否启用 debug
+func (lg *Logger) EnableDebug(enable bool) {
 	lg.disableDebug = !enable
 }
 
-func (lg *logger) Debug(args ...any) {
+// Debug 输出日志
+func (lg *Logger) Debug(args ...any) {
 	if lg.disableDebug {
 		return
 	}
 	lg.print(loggerDepth, &debugLevel, args...)
 }
 
-func (lg *logger) Debugf(format string, args ...any) {
+// Debugf 输出日志
+func (lg *Logger) Debugf(format string, args ...any) {
 	if lg.disableDebug {
 		return
 	}
 	lg.printf(loggerDepth, &debugLevel, &format, args...)
 }
 
-func (lg *logger) DebugDepth(depth int, args ...any) {
+// DebugDepth 输出日志
+func (lg *Logger) DebugDepth(depth int, args ...any) {
 	if lg.disableDebug {
 		return
 	}
 	lg.print(loggerDepth+depth, &debugLevel, args...)
 }
 
-func (lg *logger) DebugfDepth(depth int, format string, args ...any) {
+// DebugfDepth 输出日志
+func (lg *Logger) DebugfDepth(depth int, format string, args ...any) {
 	if lg.disableDebug {
 		return
 	}
 	lg.printf(loggerDepth+depth, &debugLevel, &format, args...)
 }
 
-func (lg *logger) DebugTrace(traceID string, args ...any) {
+// DebugTrace 输出日志
+func (lg *Logger) DebugTrace(traceID string, args ...any) {
 	if lg.disableDebug {
 		return
 	}
@@ -341,7 +299,8 @@ func (lg *logger) DebugTrace(traceID string, args ...any) {
 	}
 }
 
-func (lg *logger) DebugfTrace(traceID, format string, args ...any) {
+// DebugfTrace 输出日志
+func (lg *Logger) DebugfTrace(traceID, format string, args ...any) {
 	if lg.disableDebug {
 		return
 	}
@@ -352,7 +311,8 @@ func (lg *logger) DebugfTrace(traceID, format string, args ...any) {
 	}
 }
 
-func (lg *logger) DebugDepthTrace(depth int, traceID string, args ...any) {
+// DebugDepthTrace 输出日志
+func (lg *Logger) DebugDepthTrace(depth int, traceID string, args ...any) {
 	if lg.disableDebug {
 		return
 	}
@@ -363,7 +323,8 @@ func (lg *logger) DebugDepthTrace(depth int, traceID string, args ...any) {
 	}
 }
 
-func (lg *logger) DebugfDepthTrace(depth int, traceID, format string, args ...any) {
+// DebugfDepthTrace 输出日志
+func (lg *Logger) DebugfDepthTrace(depth int, traceID, format string, args ...any) {
 	if lg.disableDebug {
 		return
 	}
@@ -374,43 +335,50 @@ func (lg *logger) DebugfDepthTrace(depth int, traceID, format string, args ...an
 	}
 }
 
-func (lg *logger) IsInfo() bool {
+// IsInfo 返回是否启用 info
+func (lg *Logger) IsInfo() bool {
 	return !lg.disableInfo
 }
 
-func (lg *logger) EnableInfo(enable bool) {
+// EnableInfo 设置是否启用 info
+func (lg *Logger) EnableInfo(enable bool) {
 	lg.disableInfo = !enable
 }
 
-func (lg *logger) Info(args ...any) {
+// Info 输出日志
+func (lg *Logger) Info(args ...any) {
 	if lg.disableInfo {
 		return
 	}
 	lg.print(loggerDepth, &infoLevel, args...)
 }
 
-func (lg *logger) Infof(format string, args ...any) {
+// Infof 输出日志
+func (lg *Logger) Infof(format string, args ...any) {
 	if lg.disableInfo {
 		return
 	}
 	lg.printf(loggerDepth, &infoLevel, &format, args...)
 }
 
-func (lg *logger) InfoDepth(depth int, args ...any) {
+// InfoDepth 输出日志
+func (lg *Logger) InfoDepth(depth int, args ...any) {
 	if lg.disableInfo {
 		return
 	}
 	lg.print(loggerDepth+depth, &infoLevel, args...)
 }
 
-func (lg *logger) InfofDepth(depth int, format string, args ...any) {
+// InfofDepth 输出日志
+func (lg *Logger) InfofDepth(depth int, format string, args ...any) {
 	if lg.disableInfo {
 		return
 	}
 	lg.printf(loggerDepth+depth, &infoLevel, &format, args...)
 }
 
-func (lg *logger) InfoTrace(traceID string, args ...any) {
+// InfoTrace 输出日志
+func (lg *Logger) InfoTrace(traceID string, args ...any) {
 	if lg.disableInfo {
 		return
 	}
@@ -421,7 +389,8 @@ func (lg *logger) InfoTrace(traceID string, args ...any) {
 	}
 }
 
-func (lg *logger) InfofTrace(traceID, format string, args ...any) {
+// InfofTrace 输出日志
+func (lg *Logger) InfofTrace(traceID, format string, args ...any) {
 	if lg.disableInfo {
 		return
 	}
@@ -432,7 +401,8 @@ func (lg *logger) InfofTrace(traceID, format string, args ...any) {
 	}
 }
 
-func (lg *logger) InfoDepthTrace(depth int, traceID string, args ...any) {
+// InfoDepthTrace 输出日志
+func (lg *Logger) InfoDepthTrace(depth int, traceID string, args ...any) {
 	if lg.disableInfo {
 		return
 	}
@@ -443,7 +413,8 @@ func (lg *logger) InfoDepthTrace(depth int, traceID string, args ...any) {
 	}
 }
 
-func (lg *logger) InfofDepthTrace(depth int, traceID, format string, args ...any) {
+// InfofDepthTrace 输出日志
+func (lg *Logger) InfofDepthTrace(depth int, traceID, format string, args ...any) {
 	if lg.disableInfo {
 		return
 	}
@@ -454,43 +425,50 @@ func (lg *logger) InfofDepthTrace(depth int, traceID, format string, args ...any
 	}
 }
 
-func (lg *logger) IsWarn() bool {
+// IsWarn 返回是否启用 warn
+func (lg *Logger) IsWarn() bool {
 	return !lg.disableWarn
 }
 
-func (lg *logger) EnableWarn(enable bool) {
+// EnableWarn 设置是否启用 warn
+func (lg *Logger) EnableWarn(enable bool) {
 	lg.disableWarn = !enable
 }
 
-func (lg *logger) Warn(args ...any) {
+// Warn 输出日志
+func (lg *Logger) Warn(args ...any) {
 	if lg.disableWarn {
 		return
 	}
 	lg.print(loggerDepth, &warnLevel, args...)
 }
 
-func (lg *logger) Warnf(format string, args ...any) {
+// Warnf 输出日志
+func (lg *Logger) Warnf(format string, args ...any) {
 	if lg.disableWarn {
 		return
 	}
 	lg.printf(loggerDepth, &warnLevel, &format, args...)
 }
 
-func (lg *logger) WarnDepth(depth int, args ...any) {
+// WarnDepth 输出日志
+func (lg *Logger) WarnDepth(depth int, args ...any) {
 	if lg.disableWarn {
 		return
 	}
 	lg.print(loggerDepth+depth, &warnLevel, args...)
 }
 
-func (lg *logger) WarnfDepth(depth int, format string, args ...any) {
+// WarnfDepth 输出日志
+func (lg *Logger) WarnfDepth(depth int, format string, args ...any) {
 	if lg.disableWarn {
 		return
 	}
 	lg.printf(loggerDepth+depth, &warnLevel, &format, args...)
 }
 
-func (lg *logger) WarnTrace(traceID string, args ...any) {
+// WarnTrace 输出日志
+func (lg *Logger) WarnTrace(traceID string, args ...any) {
 	if lg.disableWarn {
 		return
 	}
@@ -501,7 +479,8 @@ func (lg *logger) WarnTrace(traceID string, args ...any) {
 	}
 }
 
-func (lg *logger) WarnfTrace(traceID, format string, args ...any) {
+// WarnfTrace 输出日志
+func (lg *Logger) WarnfTrace(traceID, format string, args ...any) {
 	if lg.disableWarn {
 		return
 	}
@@ -512,7 +491,8 @@ func (lg *logger) WarnfTrace(traceID, format string, args ...any) {
 	}
 }
 
-func (lg *logger) WarnDepthTrace(depth int, traceID string, args ...any) {
+// WarnDepthTrace 输出日志
+func (lg *Logger) WarnDepthTrace(depth int, traceID string, args ...any) {
 	if lg.disableWarn {
 		return
 	}
@@ -523,7 +503,8 @@ func (lg *logger) WarnDepthTrace(depth int, traceID string, args ...any) {
 	}
 }
 
-func (lg *logger) WarnfDepthTrace(depth int, traceID, format string, args ...any) {
+// WarnfDepthTrace 输出日志
+func (lg *Logger) WarnfDepthTrace(depth int, traceID, format string, args ...any) {
 	if lg.disableWarn {
 		return
 	}
@@ -534,43 +515,50 @@ func (lg *logger) WarnfDepthTrace(depth int, traceID, format string, args ...any
 	}
 }
 
-func (lg *logger) IsError() bool {
+// IsError 返回是否启用 error
+func (lg *Logger) IsError() bool {
 	return !lg.disableError
 }
 
-func (lg *logger) EnableError(enable bool) {
+// EnableError 设置是否启用 error
+func (lg *Logger) EnableError(enable bool) {
 	lg.disableError = !enable
 }
 
-func (lg *logger) Error(args ...any) {
+// Error 输出日志
+func (lg *Logger) Error(args ...any) {
 	if lg.disableError {
 		return
 	}
 	lg.print(loggerDepth, &errorLevel, args...)
 }
 
-func (lg *logger) Errorf(format string, args ...any) {
+// Errorf 输出日志
+func (lg *Logger) Errorf(format string, args ...any) {
 	if lg.disableError {
 		return
 	}
 	lg.printf(loggerDepth, &errorLevel, &format, args...)
 }
 
-func (lg *logger) ErrorDepth(depth int, args ...any) {
+// ErrorDepth 输出日志
+func (lg *Logger) ErrorDepth(depth int, args ...any) {
 	if lg.disableError {
 		return
 	}
 	lg.print(loggerDepth+depth, &errorLevel, args...)
 }
 
-func (lg *logger) ErrorfDepth(depth int, format string, args ...any) {
+// ErrorfDepth 输出日志
+func (lg *Logger) ErrorfDepth(depth int, format string, args ...any) {
 	if lg.disableError {
 		return
 	}
 	lg.printf(loggerDepth+depth, &errorLevel, &format, args...)
 }
 
-func (lg *logger) ErrorTrace(traceID string, args ...any) {
+// ErrorTrace 输出日志
+func (lg *Logger) ErrorTrace(traceID string, args ...any) {
 	if lg.disableError {
 		return
 	}
@@ -581,7 +569,8 @@ func (lg *logger) ErrorTrace(traceID string, args ...any) {
 	}
 }
 
-func (lg *logger) ErrorfTrace(traceID, format string, args ...any) {
+// ErrorfTrace 输出日志
+func (lg *Logger) ErrorfTrace(traceID, format string, args ...any) {
 	if lg.disableError {
 		return
 	}
@@ -592,7 +581,8 @@ func (lg *logger) ErrorfTrace(traceID, format string, args ...any) {
 	}
 }
 
-func (lg *logger) ErrorDepthTrace(depth int, traceID string, args ...any) {
+// ErrorDepthTrace 输出日志
+func (lg *Logger) ErrorDepthTrace(depth int, traceID string, args ...any) {
 	if lg.disableError {
 		return
 	}
@@ -603,7 +593,8 @@ func (lg *logger) ErrorDepthTrace(depth int, traceID string, args ...any) {
 	}
 }
 
-func (lg *logger) ErrorfDepthTrace(depth int, traceID, format string, args ...any) {
+// ErrorfDepthTrace 输出日志
+func (lg *Logger) ErrorfDepthTrace(depth int, traceID, format string, args ...any) {
 	if lg.disableError {
 		return
 	}

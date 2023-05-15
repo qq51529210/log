@@ -25,7 +25,7 @@ func Test_Logger(t *testing.T) {
 	testLoggerError(t, lg)
 }
 
-func testLoggerDebug(t *testing.T, lg Logger) {
+func testLoggerDebug(t *testing.T, lg *Logger) {
 	lg.Debug(1, 2, 3)
 	lg.Debugf("%d", 1)
 	lg.DebugDepth(0, 1, 2, 3)
@@ -36,7 +36,7 @@ func testLoggerDebug(t *testing.T, lg Logger) {
 	lg.DebugfDepthTrace(0, "trace", "%d", 1)
 }
 
-func testLoggerInfo(t *testing.T, lg Logger) {
+func testLoggerInfo(t *testing.T, lg *Logger) {
 	lg.Info(1, 2, 3)
 	lg.Infof("%d", 1)
 	lg.InfoDepth(0, 1, 2, 3)
@@ -47,7 +47,7 @@ func testLoggerInfo(t *testing.T, lg Logger) {
 	lg.InfofDepthTrace(0, "trace", "%d", 1)
 }
 
-func testLoggerWarn(t *testing.T, lg Logger) {
+func testLoggerWarn(t *testing.T, lg *Logger) {
 	lg.Warn(1, 2, 3)
 	lg.Warnf("%d", 1)
 	lg.WarnDepth(0, 1, 2, 3)
@@ -58,7 +58,7 @@ func testLoggerWarn(t *testing.T, lg Logger) {
 	lg.WarnfDepthTrace(0, "trace", "%d", 1)
 }
 
-func testLoggerError(t *testing.T, lg Logger) {
+func testLoggerError(t *testing.T, lg *Logger) {
 	lg.Error(1, 2, 3)
 	lg.Errorf("%d", 1)
 	lg.ErrorDepth(0, 1, 2, 3)

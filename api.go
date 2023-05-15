@@ -18,6 +18,11 @@ func init() {
 	defaultLogger = NewLogger(os.Stdout, new(DefaultHeader), "")
 }
 
+// GetLogger 返回默认的 Logger
+func GetLogger() *Logger {
+	return defaultLogger
+}
+
 // Recover 使用默认 Logger 函数
 func Recover(recover any) {
 	defaultLogger.Recover(recover)

@@ -69,6 +69,7 @@ func (th *FileNameHeader) Stack(log *Log, depth int) {
 			}
 		}
 	}
+	log.b = append(log.b, ' ')
 	log.b = append(log.b, path...)
 	log.b = append(log.b, ':')
 	log.WriteInt(line)

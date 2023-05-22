@@ -1,9 +1,15 @@
 package log
 
 import (
+	"log"
 	"os"
 	"testing"
+	"time"
 )
+
+func init() {
+	log.SetFlags(log.LstdFlags | log.Llongfile)
+}
 
 func Test_Logger(t *testing.T) {
 	lg := NewLogger(os.Stdout, new(DefaultHeader), "default")
@@ -23,6 +29,16 @@ func Test_Logger(t *testing.T) {
 	testLoggerInfo(t, lg)
 	testLoggerWarn(t, lg)
 	testLoggerError(t, lg)
+	//
+	SetLogger(lg)
+	f := func() {
+		ErrorfDepthTrace(0, "gogo", "%d", 1)
+		log.Output(2, "123")
+	}
+	go f()
+	f()
+	//
+	time.Sleep(time.Second * 3)
 }
 
 func testLoggerDebug(t *testing.T, lg *Logger) {
@@ -62,11 +78,11 @@ func testLoggerError(t *testing.T, lg *Logger) {
 	lg.Error(1, 2, 3)
 	lg.Errorf("%d", 1)
 	lg.ErrorDepth(0, 1, 2, 3)
-	lg.ErrorfDepth(0, "%d", 1)
+	lg.ErrorfDepth(1, "%d", 1)
 	lg.ErrorTrace("trace", 1, 2)
 	lg.ErrorfTrace("trace", "%d", 1)
 	lg.ErrorDepthTrace(0, "trace", 1, 2)
-	lg.ErrorfDepthTrace(0, "trace", "%d", 1)
+	lg.ErrorfDepthTrace(1, "trace", "%d", 1)
 }
 
 func Test_Recover(t *testing.T) {

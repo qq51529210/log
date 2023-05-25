@@ -34,7 +34,7 @@ type FileConfig struct {
 	// 每一份日志文件的最大字节，使用 1.5/K/M/G/T 这样的字符表示。
 	MaxFileSize string
 	// 保存的最大天数，最小是1天。
-	MaxKeepDay float64
+	MaxKeepDay int
 	// 同步到磁盘的时间间隔，单位，毫秒。最小是10毫秒。
 	// 注意的是，如果文件大小达到 MaxFileSize ，那么立即同步。
 	SyncInterval int
@@ -53,7 +53,7 @@ func NewFile(conf *FileConfig) (*File, error) {
 		size = defaultMaxFileSize
 	}
 	// 文件保存的时长
-	keepDuraion := time.Duration(conf.MaxKeepDay * float64(minKeepDay))
+	keepDuraion := time.Duration(conf.MaxKeepDay) * minKeepDay
 	if keepDuraion < minKeepDay {
 		keepDuraion = minKeepDay
 	}

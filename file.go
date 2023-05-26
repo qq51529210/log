@@ -30,16 +30,16 @@ var (
 // FileConfig 是 NewFile 的参数。
 type FileConfig struct {
 	// 日志保存的根目录
-	RootDir string
-	// 每一份日志文件的最大字节，使用 1.5/K/M/G/T 这样的字符表示。
-	MaxFileSize string
-	// 保存的最大天数，最小是1天。
-	MaxKeepDay int
-	// 同步到磁盘的时间间隔，单位，毫秒。最小是10毫秒。
-	// 注意的是，如果文件大小达到 MaxFileSize ，那么立即同步。
-	SyncInterval int
+	RootDir string `json:"rootDir" yaml:"rootDir" validate:"required,filepath"`
+	// 每一份日志文件的最大字节，使用 1.5/K/M/G/T 这样的字符表示
+	MaxFileSize string `json:"maxFileSize" yaml:"maxFileSize"`
+	// 保存的最大天数，最小是1天
+	MaxKeepDay int `json:"maxKeepDay" yaml:"maxKeepDay" validate:"required,min=1"`
+	// 同步到磁盘的时间间隔，单位毫秒，最小是 10
+	// 但是如果文件大小达到 MaxFileSize ，那么立即同步
+	SyncInterval int `json:"syncInterval" yaml:"syncInterval" validate:"required,min=10"`
 	// 是否输出到控制台，out/err
-	Std string
+	Std string `json:"std" yaml:"std" validate:"omitempty,oneof=out err"`
 }
 
 // NewFile 返回一个 File 实例。

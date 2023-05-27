@@ -30,7 +30,7 @@ var (
 // FileConfig 是 NewFile 的参数。
 type FileConfig struct {
 	// 日志保存的根目录
-	RootDir string `json:"rootDir" yaml:"rootDir" validate:"required,filepath"`
+	RootDir string `json:"rootDir" yaml:"rootDir" validate:"required,dirpath"`
 	// 每一份日志文件的最大字节，使用 1.5/K/M/G/T 这样的字符表示
 	MaxFileSize string `json:"maxFileSize" yaml:"maxFileSize"`
 	// 保存的最大天数，最小是1天

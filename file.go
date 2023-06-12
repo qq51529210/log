@@ -155,7 +155,7 @@ func (f *File) syncLoop(syncDur time.Duration) {
 		select {
 		case now := <-syncTimer.C:
 			// 检查过期
-			if now.Sub(checkTime) > f.maxKeepDuraion {
+			if now.Sub(checkTime) > time.Hour {
 				f.check(&checkTime)
 				checkTime = now
 			}

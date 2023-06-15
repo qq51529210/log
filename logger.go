@@ -56,6 +56,7 @@ func (lg *Logger) print(depth int, level *string, args ...any) {
 	l.b = append(l.b, *level...)
 	// 头
 	lg.Header.Time(l)
+	l.b = append(l.b, ' ')
 	lg.Header.Stack(l, depth)
 	l.b = append(l.b, headerEnd...)
 	// 日志

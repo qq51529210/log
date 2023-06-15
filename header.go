@@ -40,10 +40,12 @@ type Header interface {
 type DefaultHeader struct {
 }
 
+// Time 实现 Header 接口
 func (th *DefaultHeader) Time(log *Log) {
 	FormatTime(log)
 }
 
+// Stack 实现 Header 接口
 func (th *DefaultHeader) Stack(log *Log, depth int) {
 }
 
@@ -52,10 +54,12 @@ func (th *DefaultHeader) Stack(log *Log, depth int) {
 type FileNameHeader struct {
 }
 
+// Time 实现 Header 接口
 func (th *FileNameHeader) Time(log *Log) {
 	FormatTime(log)
 }
 
+// Stack 实现 Header 接口
 func (th *FileNameHeader) Stack(log *Log, depth int) {
 	_, path, line, ok := runtime.Caller(depth)
 	if !ok {
@@ -69,7 +73,6 @@ func (th *FileNameHeader) Stack(log *Log, depth int) {
 			}
 		}
 	}
-	log.b = append(log.b, ' ')
 	log.b = append(log.b, path...)
 	log.b = append(log.b, ':')
 	log.WriteInt(line)
@@ -80,17 +83,18 @@ func (th *FileNameHeader) Stack(log *Log, depth int) {
 type FilePathHeader struct {
 }
 
+// Time 实现 Header 接口
 func (th *FilePathHeader) Time(log *Log) {
 	FormatTime(log)
 }
 
+// Stack 实现 Header 接口
 func (th *FilePathHeader) Stack(log *Log, depth int) {
 	_, path, line, ok := runtime.Caller(depth)
 	if !ok {
 		path = "???"
 		line = -1
 	}
-	log.b = append(log.b, ' ')
 	log.b = append(log.b, path...)
 	log.b = append(log.b, ':')
 	log.WriteInt(line)

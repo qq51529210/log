@@ -34,7 +34,7 @@ type Logger struct {
 }
 
 // NewLogger 返回默认的 Logger
-// 格式 "Header [name] [level] [tracID] text"
+// 格式 "[name] [level] Header [tracID] text"
 func NewLogger(writer io.Writer, header Header, name string) *Logger {
 	lg := new(Logger)
 	lg.Writer = writer

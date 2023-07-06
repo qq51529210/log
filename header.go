@@ -26,7 +26,7 @@ func FormatTime(log *Log) {
 	log.WriteIntRightAlign(second, 2)
 	// Nanosecond
 	log.b = append(log.b, '.')
-	log.WriteInt(t.Nanosecond())
+	log.WriteIntLeftAlign(t.Nanosecond(), 6)
 }
 
 // Header 用于格式化日志头

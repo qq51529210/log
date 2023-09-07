@@ -166,7 +166,7 @@ func (lg *Logger) Recover(recover any) {
 	l.b = append(l.b, levels[panicLevel]...)
 	FormatTime(l)
 	// recover
-	fmt.Fprintf(l, ": %v\n", recover)
+	fmt.Fprintf(l, " %v\n", recover)
 	// filter
 	p := b.b
 	// 找到 panic.go

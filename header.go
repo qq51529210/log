@@ -6,61 +6,50 @@ import (
 	"time"
 )
 
-// FormatTime format is "2006-01-02 15:04:05.000000"
+var (
+	// header:
+	headerEnd = []byte(": ")
+)
+
+// FormatTime 格式化 "2006-01-02 15:04:05.000000"
 func FormatTime(log *Log) {
+	// 不使用 time 标准库，快一点
 	t := time.Now()
 	year, month, day := t.Date()
 	hour, minute, second := t.Clock()
 	// Date
-	log.WriteIntLeftAlign(year, 4)
+	log.IntLeftAlign(year, 4)
 	log.b = append(log.b, '-')
-	log.WriteIntRightAlign(int(month), 2)
+	log.IntRightAlign(int(month), 2)
 	log.b = append(log.b, '-')
-	log.WriteIntRightAlign(day, 2)
+	log.IntRightAlign(day, 2)
 	log.b = append(log.b, ' ')
 	// Time
-	log.WriteIntRightAlign(hour, 2)
+	log.IntRightAlign(hour, 2)
 	log.b = append(log.b, ':')
-	log.WriteIntRightAlign(minute, 2)
+	log.IntRightAlign(minute, 2)
 	log.b = append(log.b, ':')
-	log.WriteIntRightAlign(second, 2)
+	log.IntRightAlign(second, 2)
 	// Nanosecond
 	log.b = append(log.b, '.')
-	log.WriteIntLeftAlign(t.Nanosecond(), 6)
+	log.IntLeftAlign(t.Nanosecond(), 9)
 }
 
-// Header 用于格式化日志头
-type Header interface {
-	Time(log *Log)
-	Stack(log *Log, depth int)
-}
+// FormatHeader 用于格式化日志头
+type FormatHeader func(log *Log, depth int)
 
-// DefaultHeader 实现 Header 接口
-// 格式 2006-01-02 15:04:05.000000
-type DefaultHeader struct {
-}
-
-// Time 实现 Header 接口
-func (th *DefaultHeader) Time(log *Log) {
+// DefaultHeader 输出 2006-01-02 15:04:05.000000000
+func DefaultHeader(log *Log, depth int) {
 	FormatTime(log)
+	// log.b = append(log.b, headerEnd...)
 }
 
-// Stack 实现 Header 接口
-func (th *DefaultHeader) Stack(log *Log, depth int) {
-}
-
-// FileNameHeader 实现 Header 接口
-// 格式 2006-01-02 15:04:05.000000 [fileName:fileLine]
-type FileNameHeader struct {
-}
-
-// Time 实现 Header 接口
-func (th *FileNameHeader) Time(log *Log) {
+// FileNameHeader 输出 2006-01-02 15:04:05.000000000 [fileName:fileLine]
+func FileNameHeader(log *Log, depth int) {
+	// 2006-01-02 15:04:05.000000000
 	FormatTime(log)
-}
-
-// Stack 实现 Header 接口
-func (th *FileNameHeader) Stack(log *Log, depth int) {
+	log.b = append(log.b, ' ')
+	// [fileName:fileLine]
 	_, path, line, ok := runtime.Caller(depth)
 	if !ok {
 		path = "???"
@@ -75,21 +64,16 @@ func (th *FileNameHeader) Stack(log *Log, depth int) {
 	}
 	log.b = append(log.b, path...)
 	log.b = append(log.b, ':')
-	log.WriteInt(line)
+	log.Int(line)
+	// log.b = append(log.b, headerEnd...)
 }
 
-// FilePathHeader 实现 Header 接口
-// 格式 2006-01-02 15:04:05.000000 [filePath:fileLine]
-type FilePathHeader struct {
-}
-
-// Time 实现 Header 接口
-func (th *FilePathHeader) Time(log *Log) {
+// FilePathHeader 输出 2006-01-02 15:04:05.000000 [filePath:fileLine]
+func FilePathHeader(log *Log, depth int) {
+	// 2006-01-02 15:04:05.000000000
 	FormatTime(log)
-}
-
-// Stack 实现 Header 接口
-func (th *FilePathHeader) Stack(log *Log, depth int) {
+	log.b = append(log.b, ' ')
+	// [filePath:fileLine]
 	_, path, line, ok := runtime.Caller(depth)
 	if !ok {
 		path = "???"
@@ -97,5 +81,6 @@ func (th *FilePathHeader) Stack(log *Log, depth int) {
 	}
 	log.b = append(log.b, path...)
 	log.b = append(log.b, ':')
-	log.WriteInt(line)
+	log.Int(line)
+	// log.b = append(log.b, headerEnd...)
 }

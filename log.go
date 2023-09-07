@@ -61,8 +61,8 @@ func (l *Log) reversed() {
 	l.b = append(l.b, l.f...)
 }
 
-// WriteInt 写入整数
-func (l *Log) WriteInt(v int) {
+// Int 写入整数
+func (l *Log) Int(v int) {
 	if v < 0 {
 		// 负数
 		l.writeReversedInt(-v)
@@ -74,8 +74,8 @@ func (l *Log) WriteInt(v int) {
 	l.reversed()
 }
 
-// WriteIntRightAlign 写入整数，左侧补齐 n 个 0
-func (l *Log) WriteIntRightAlign(v, n int) {
+// IntRightAlign 写入整数，左侧补齐 n 个 0
+func (l *Log) IntRightAlign(v, n int) {
 	if v < 0 {
 		// 负数
 		l.writeReversedInt(-v)
@@ -93,8 +93,8 @@ func (l *Log) WriteIntRightAlign(v, n int) {
 	l.reversed()
 }
 
-// WriteIntLeftAlign 写入整数，右侧补齐 0
-func (l *Log) WriteIntLeftAlign(v, n int) {
+// IntLeftAlign 写入整数，右侧补齐 0
+func (l *Log) IntLeftAlign(v, n int) {
 	if v < 0 {
 		// 负数
 		l.writeReversedInt(-v)
@@ -111,17 +111,17 @@ func (l *Log) WriteIntLeftAlign(v, n int) {
 	}
 }
 
-// WriteString 写入字符串
-func (l *Log) WriteString(s string) {
+// Text 写入字符串
+func (l *Log) Text(s string) {
 	l.b = append(l.b, s...)
 }
 
-// WriteBytes 写入字节数组
-func (l *Log) WriteBytes(s []byte) {
+// Bytes 写入字节数组
+func (l *Log) Bytes(s []byte) {
 	l.b = append(l.b, s...)
 }
 
-// WriteByte 写入字节
-func (l *Log) WriteByte(s byte) {
+// Byte 写入字节
+func (l *Log) Byte(s byte) {
 	l.b = append(l.b, s)
 }

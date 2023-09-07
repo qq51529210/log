@@ -275,7 +275,7 @@ func (f *File) openLast() {
 	}
 	// 没有文件
 	fileName := now.Format(fileNameFormat)
-	if len(dirEntries) > 1 {
+	if len(dirEntries) > 0 {
 		// 循环检查
 		dirEntry := dirEntries[0]
 		lastFI, err := dirEntry.Info()

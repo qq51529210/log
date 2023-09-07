@@ -12,19 +12,19 @@ func init() {
 }
 
 func Test_Logger(t *testing.T) {
-	lg := NewLogger(os.Stdout, new(DefaultHeader), "default")
+	lg := NewLogger(os.Stdout, DefaultHeader, "default")
 	testLoggerDebug(t, lg)
 	testLoggerInfo(t, lg)
 	testLoggerWarn(t, lg)
 	testLoggerError(t, lg)
 	//
-	lg = NewLogger(os.Stdout, new(FileNameHeader), "file name")
+	lg = NewLogger(os.Stdout, FileNameHeader, "file name")
 	testLoggerDebug(t, lg)
 	testLoggerInfo(t, lg)
 	testLoggerWarn(t, lg)
 	testLoggerError(t, lg)
 	//
-	lg = NewLogger(os.Stdout, new(FilePathHeader), "file path")
+	lg = NewLogger(os.Stdout, FilePathHeader, "file path")
 	testLoggerDebug(t, lg)
 	testLoggerInfo(t, lg)
 	testLoggerWarn(t, lg)
@@ -86,7 +86,7 @@ func testLoggerError(t *testing.T, lg *Logger) {
 }
 
 func Test_Recover(t *testing.T) {
-	lg := NewLogger(os.Stdout, new(DefaultHeader), "default")
+	lg := NewLogger(os.Stdout, DefaultHeader, "default")
 	defer func() {
 		lg.Recover(recover())
 	}()

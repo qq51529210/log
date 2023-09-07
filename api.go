@@ -98,4 +98,6 @@ func SetLogger(lg *Logger) {
 	ErrorfTrace = DefaultLogger.ErrorfTrace
 	ErrorDepthTrace = DefaultLogger.ErrorDepthTrace
 	ErrorfDepthTrace = DefaultLogger.ErrorfDepthTrace
+	// Recover
+	Recover = DefaultLogger.Recover
 }

@@ -69,6 +69,7 @@ func SetLogger(lg *Logger) {
 	// Debug
 	Debug = DefaultLogger.Debug
 	Debugf = DefaultLogger.Debugf
+	DebugDepth = DefaultLogger.DebugDepth
 	DebugfDepth = DefaultLogger.DebugfDepth
 	DebugTrace = DefaultLogger.DebugTrace
 	DebugfTrace = DefaultLogger.DebugfTrace
@@ -77,6 +78,7 @@ func SetLogger(lg *Logger) {
 	// Info
 	Info = DefaultLogger.Info
 	Infof = DefaultLogger.Infof
+	InfoDepth = DefaultLogger.InfoDepth
 	InfofDepth = DefaultLogger.InfofDepth
 	InfoTrace = DefaultLogger.InfoTrace
 	InfofTrace = DefaultLogger.InfofTrace
@@ -85,6 +87,7 @@ func SetLogger(lg *Logger) {
 	// Warn
 	Warn = DefaultLogger.Warn
 	Warnf = DefaultLogger.Warnf
+	WarnDepth = DefaultLogger.WarnDepth
 	WarnfDepth = DefaultLogger.WarnfDepth
 	WarnTrace = DefaultLogger.WarnTrace
 	WarnfTrace = DefaultLogger.WarnfTrace
@@ -93,6 +96,7 @@ func SetLogger(lg *Logger) {
 	// Error
 	Error = DefaultLogger.Error
 	Errorf = DefaultLogger.Errorf
+	ErrorDepth = DefaultLogger.ErrorDepth
 	ErrorfDepth = DefaultLogger.ErrorfDepth
 	ErrorTrace = DefaultLogger.ErrorTrace
 	ErrorfTrace = DefaultLogger.ErrorfTrace
